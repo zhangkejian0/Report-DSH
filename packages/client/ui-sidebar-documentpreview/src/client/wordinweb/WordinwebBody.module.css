@@ -1,0 +1,24 @@
+/* The frame fills the preview pane; WordInWeb's DocxView owns its internal
+   scroll container, so no shared scroller is attached here. */
+.frame {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--dsw-font, sans-serif);
+  white-space: normal;
+  position: relative;
+}
+
+.loading {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.status {
+  margin: 0;
+  padding: 16px;
+  color: var(--dsw-color-fg-muted, #5f6368);
+}
