@@ -44,7 +44,7 @@ export function apply(ctx: Context): void {
   ctx.effect(() => ctx.slots.inject('sidebar.right.tab.document', () => ctx.slots.register({
     name: 'sidebar.right.tab.document', key: WORDINWEB_BODY_ID, locale: 'sidebarWordinweb',
   }, WordinwebBody)), 'document-wordinweb: body')
-  ctx.inject(['remote', 'remote.workspaceFiles', 'remote.session'], (scope) => {
+  ctx.inject(['remote', 'remote.workspaceFiles', 'remote.session', 'uiWorkspace'], (scope) => {
     const unwrap = <T>(result: { ok: true; value: T } | { ok: false; error: { message?: string } }): T => {
       if (result.ok) return result.value
       throw new Error(result.error.message ?? 'remote call failed')
@@ -62,9 +62,19 @@ export function apply(ctx: Context): void {
     }
     bridge.read = async (sessionId, path, signal) =>
       unwrap(await scope.remote.workspaceFiles.readBytes(sessionId, path, {}, signal)).data
+    bridge.stat = async (sessionId, path, signal) =>
+      unwrap(await scope.remote.workspaceFiles.stat(sessionId, path, signal)).absolutePath
+    bridge.create = async (cwd, signal) => {
+      signal.throwIfAborted()
+      return unwrap(await scope.remote.session.create({ cwd } as never)).sessionId
+    }
+    bridge.openSession = (sessionId) => { ctx.uiWorkspace.openSession({ sessionId } as never) }
     scope.effect(() => () => {
       bridge.save = undefined
       bridge.prompt = undefined
+      bridge.create = undefined
+      bridge.stat = undefined
+      bridge.openSession = undefined
       bridge.read = undefined
     })
   })

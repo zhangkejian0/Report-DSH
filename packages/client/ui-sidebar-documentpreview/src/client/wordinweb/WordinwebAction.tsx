@@ -38,11 +38,12 @@ export function WordinwebAction({ content, useTabInfo, t }: WordinwebActionProps
   const initialData = content.kind === 'bytes' ? content.data : undefined
   const [docData, setDocData] = useState<Uint8Array | undefined>(initialData)
   const [docSeq, setDocSeq] = useState(0)
-  // Temporary AI chat state, local to this modal conversation.
+  // Floating AI assistant state: one auto-created workspace session per modal.
   const [chatOpen, setChatOpen] = useState(true)
   const [chatBusy, setChatBusy] = useState(false)
   const [chatInput, setChatInput] = useState('')
-  const [chatLog, setChatLog] = useState<Array<{ role: 'user' | 'ai'; text: string }>>([])
+  const [chatText, setChatText] = useState<string>()
+  const [editSession, setEditSession] = useState<string>()
   const { tab } = useTabInfo()
   // The action slot receives no resource address; the tab's content id is
   // the file address whose decoded basename is the document name.
@@ -50,10 +51,8 @@ export function WordinwebAction({ content, useTabInfo, t }: WordinwebActionProps
   const address = parseFileAddress(String(tab.contentId ?? ''))
   const data = docData ?? initialData
   const dialogRef = useRef<HTMLDivElement>(null)
-  const chatLogRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => { setDocData(undefined); setDocSeq(value => value + 1) }, [initialData])
-  useEffect(() => { chatLogRef.current?.scrollTo({ top: chatLogRef.current.scrollHeight }) }, [chatLog, chatBusy])
 
   useEffect(() => {
     if (!open) return
@@ -96,21 +95,31 @@ export function WordinwebAction({ content, useTabInfo, t }: WordinwebActionProps
     }
   }
 
-  const chattable = address?.scope === 'session' && bridge.prompt !== undefined
+  const chattable = address?.scope === 'session' && bridge.prompt !== undefined && bridge.create !== undefined && bridge.stat !== undefined
 
   const sendChat = async (): Promise<void> => {
     const instruction = chatInput.trim()
     if (instruction === '' || chatBusy || !chattable || address?.scope !== 'session') return
     setChatInput('')
-    setChatLog(log => [...log, { role: 'user', text: instruction }, { role: 'ai', text: t('chatWaiting') }])
     setChatBusy(true)
     const before = data?.byteLength ?? 0
+    let sessionId = editSession
     try {
-      await bridge.prompt?.(address.sessionId, t('chatInstruction', { path: address.path, instruction }), tab.signal)
-      // The session's agent edits the file; poll until the bytes change.
+      if (sessionId === undefined) {
+        setChatText(t('chatCreating'))
+        const absolute = await bridge.stat?.(address.sessionId, address.path, tab.signal)
+        if (absolute === undefined) throw new Error('cannot resolve absolute path')
+        const cwd = absolute.replace(/[\\/][^\\/]+$/u, '')
+        sessionId = await bridge.create?.(cwd, tab.signal)
+        if (sessionId === undefined) throw new Error('session create returned no id')
+        setEditSession(sessionId)
+      }
+      setChatText(t('chatWaiting'))
+      await bridge.prompt?.(sessionId as never, t('chatInstruction', { path: address.path, instruction }), tab.signal)
+      // The fresh session's agent edits the file; poll until the bytes change.
       let changed = false
-      for (let poll = 0; poll < 90 && changed === false; poll++) {
-        await new Promise(resolve => { setTimeout(resolve, 2000) })
+      for (let poll = 0; poll < 120 && changed === false; poll++) {
+        await new Promise((resolve) => { setTimeout(resolve, 2000) })
         if (tab.signal.aborted) break
         try {
           const fresh = await bridge.read?.(address.sessionId, address.path, tab.signal)
@@ -121,10 +130,10 @@ export function WordinwebAction({ content, useTabInfo, t }: WordinwebActionProps
           }
         } catch { /* transient read failure: keep polling */ }
       }
-      setChatLog(log => [...log.slice(0, -1), { role: 'ai', text: changed ? t('chatApplied') : t('chatPending') }])
+      setChatText(changed ? t('chatApplied') : t('chatPending'))
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error)
-      setChatLog(log => [...log.slice(0, -1), { role: 'ai', text: t('chatFailed', { message }) }])
+      setChatText(t('chatFailed', { message }))
     } finally {
       setChatBusy(false)
     }
@@ -185,23 +194,24 @@ export function WordinwebAction({ content, useTabInfo, t }: WordinwebActionProps
               />
             </div>
             {chattable && chatOpen && (
-              <aside className={css.chat} data-wordinweb-chat>
-                <div className={css.chatHeader}>{t('chatTitle')}</div>
-                <div className={css.chatLog} ref={chatLogRef}>
-                  {chatLog.length === 0 && <div className={css.chatHint}>{t('chatHint')}</div>}
-                  {chatLog.map((entry, index) => (
-                    <div key={index} className={entry.role === 'user' ? css.chatUser : css.chatAi}>
-                      {entry.text}
-                    </div>
-                  ))}
-                  {chatBusy && <div className={css.chatBusy}>{t('chatThinking')}</div>}
+              <div className={css.float} data-wordinweb-chat>
+                <div className={css.floatHeader}>
+                  <span>{t('chatTitle')}</span>
+                  {editSession !== undefined && (
+                    <button type="button" className={css.floatLink} onClick={() => { bridge.openSession?.(editSession) }}>
+                      {t('chatOpenSession')}
+                    </button>
+                  )}
+                  <span className={css.spacer} />
+                  <button type="button" className={css.floatLink} onClick={() => { setChatOpen(false) }}>×</button>
                 </div>
+                <div className={css.floatBody}>{chatText ?? t('chatHint')}</div>
                 <div className={css.chatInputRow}>
                   <textarea
                     className={css.chatInput}
                     value={chatInput}
                     placeholder={t('chatPlaceholder')}
-                    rows={3}
+                    rows={2}
                     disabled={chatBusy}
                     onChange={(event) => { setChatInput(event.target.value) }}
                     onKeyDown={(event) => {
@@ -215,7 +225,7 @@ export function WordinwebAction({ content, useTabInfo, t }: WordinwebActionProps
                     {t('chatSend')}
                   </button>
                 </div>
-              </aside>
+              </div>
             )}
           </div>
         </div>
