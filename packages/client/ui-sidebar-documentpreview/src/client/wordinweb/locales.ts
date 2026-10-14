@@ -12,7 +12,8 @@ export const zh = {
   saved: '已保存',
   saveFailed: '保存失败：{message}',
   download: '下载已编辑文档',
-  chatOpenSession: '查看对话',
+  sessionInstruction: '这是「{path}」的编辑会话。后续修改要求都针对该文件，请使用 word_document_* 工具编辑它，并在完成后调用 word_document_save 保存。现在请只确认已准备好，不要修改文档。',
+  sessionReady: '已在工作区创建编辑会话',
 } satisfies Record<string, string>
 
 /** WordInWeb renderer dictionary keys. */
@@ -32,7 +33,8 @@ export const en = {
   saved: 'Saved',
   saveFailed: 'Save failed: {message}',
   download: 'Download edited document',
-  chatOpenSession: 'Open conversation',
+  sessionInstruction: 'This session edits "{path}". Apply later requests to that file with the word_document_* tools and call word_document_save when done. For now, only confirm you are ready; do not modify the document.',
+  sessionReady: 'Created an edit session in the workspace',
 } satisfies Record<WordinwebPreviewKey, string>
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {

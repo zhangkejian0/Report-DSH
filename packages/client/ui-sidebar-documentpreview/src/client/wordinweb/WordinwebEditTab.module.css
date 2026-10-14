@@ -52,15 +52,6 @@
 .button:disabled,
 .primary:disabled { opacity: 0.5; cursor: default; }
 
-.link {
-  border: none;
-  background: none;
-  color: #1a73e8;
-  font-size: 12px;
-  cursor: pointer;
-  padding: 0;
-}
-
 .editor {
   flex: 1;
   min-height: 0;

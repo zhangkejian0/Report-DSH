@@ -57,6 +57,9 @@
       "path": "../../api/workspace-files/tsconfig.client.json"
     },
     {
+      "path": "../../api/workspace-controller/tsconfig.client.json"
+    },
+    {
       "path": "../../util/workspace-path"
     },
     {
@@ -70,9 +73,6 @@
     },
     {
       "path": "../ui-settings/tsconfig.client.json"
-    },
-    {
-      "path": "../ui-workspace"
     }
   ]
 }

@@ -1,7 +1,6 @@
 /** Editable WordInWeb document hosted as its own right-Sidebar tab. */
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
-import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { DocxToolbar, DocxView, type DocxViewApi } from 'wordinweb'
 import { basenameOf } from '../definition.ts'
 import { reconcileBoundCoreProperties } from './core-properties.ts'
@@ -49,7 +48,7 @@ export function WordinwebEditTab({ useTabInfo, t }: WordinwebEditTabProps): Reac
   const [api, setApi] = useState<DocxViewApi | null>(null)
   const [saving, setSaving] = useState(false)
   const [status, setStatus] = useState<string>()
-  const [editSession, setEditSession] = useState<SessionId>()
+  const createdFor = useRef<string>()
 
   useEffect(() => {
     if (ownerSession === undefined || path === undefined) return
@@ -70,14 +69,22 @@ export function WordinwebEditTab({ useTabInfo, t }: WordinwebEditTabProps): Reac
     if (ownerSession === undefined || path === undefined) return
     const create = bridge.create
     const stat = bridge.stat
-    if (create === undefined || stat === undefined) return
+    const prompt = bridge.prompt
+    if (create === undefined || stat === undefined || prompt === undefined) return
+    const key = `${ownerSession}:${path}`
+    if (createdFor.current === key) return
+    createdFor.current = key
     const closed = { settled: false }
     void (async () => {
       try {
-        const created = await create(directoryOf(await stat(ownerSession, path, tab.signal)), tab.signal)
+        const sessionId = await create(directoryOf(await stat(ownerSession, path, tab.signal)), tab.signal)
+        // A Session joins its Workspace list only once it takes a turn, so this
+        // one opens by naming the document it edits rather than sitting blank.
+        await prompt(sessionId, t('sessionInstruction', { path }), tab.signal)
         if (closed.settled) return
-        setEditSession(created)
+        setStatus(t('sessionReady'))
       } catch (error: unknown) {
+        createdFor.current = undefined
         if (closed.settled) return
         setStatus(t('sessionFailed', { message: error instanceof Error ? error.message : String(error) }))
       }
@@ -127,11 +134,6 @@ export function WordinwebEditTab({ useTabInfo, t }: WordinwebEditTabProps): Reac
     <div className={css.root} data-wordinweb-edit>
       <div className={css.bar}>
         {status !== undefined && <span className={css.status} role="status">{status}</span>}
-        {editSession !== undefined && (
-          <button type="button" className={css.link} onClick={() => { bridge.openSession?.(editSession) }}>
-            {t('chatOpenSession')}
-          </button>
-        )}
         <button type="button" className={css.button} onClick={download} disabled={api === null}>
           {t('download')}
         </button>

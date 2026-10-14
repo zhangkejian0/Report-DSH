@@ -1,7 +1,8 @@
 /** WordInWeb metadata, keyed document body, and its own edit tab. */
 import type { Context } from '@deepseek-ai/cordis'
+import type { SessionRequestId } from '@deepseek-ai/dsh-api-remotes/client'
+import type { WorkspaceId, WorkspaceView } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type { SidebarRightTabDefinition } from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
-import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
 import type {} from '../index.ts'
 import type { DocumentPreviewDefinition } from '../document/registry.ts'
 import { basenameOf } from '../definition.ts'
@@ -53,6 +54,32 @@ export function wordinwebEditDefinition(): SidebarRightTabDefinition {
   }
 }
 
+/** Normalize a Windows or POSIX directory path so registered paths compare fairly. */
+function normalizePath(path: string): string {
+  return path.replace(/\\/g, '/').replace(/\/+$/u, '').toLowerCase()
+}
+
+/**
+ * Find the Workspace that owns one directory.
+ * @param items - registered Workspaces.
+ * @param directory - absolute directory holding the document.
+ * @returns the deepest matching Workspace, or undefined when none contains it.
+ */
+function owningWorkspaceId(items: readonly WorkspaceView[], directory: string): WorkspaceId | undefined {
+  const target = normalizePath(directory)
+  let best: WorkspaceView | undefined
+  let bestLength = -1
+  for (const item of items) {
+    const path = normalizePath(item.path)
+    if (target !== path && !target.startsWith(`${path}/`)) continue
+    if (path.length > bestLength) {
+      best = item
+      bestLength = path.length
+    }
+  }
+  return best?.workspaceId
+}
+
 /**
  * Register the WordInWeb dictionary, metadata, toolbar action, body, and edit tab.
  * @param ctx - owning plugin context.
@@ -71,7 +98,7 @@ export function apply(ctx: Context): void {
   ctx.effect(() => ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register({
     name: 'sidebar.right.pane.tab', key: WORDINWEB_EDIT_ID, locale: 'sidebarWordinweb',
   }, WordinwebEditTab)), 'document-wordinweb: edit tab')
-  ctx.inject(['remote', 'remote.workspaceFiles', 'sessions', 'uiWorkspace'], (scope) => {
+  ctx.inject(['remote', 'remote.workspaceFiles', 'remote.session', 'sessions', 'workspaces'], (scope) => {
     const unwrap = <T>(result: { ok: true; value: T } | { ok: false; error: { message?: string } }): T => {
       if (result.ok) return result.value
       throw new Error(result.error.message ?? 'remote call failed')
@@ -79,24 +106,32 @@ export function apply(ctx: Context): void {
     bridge.save = async (sessionId, path, base64, signal) => {
       unwrap(await scope.remote.workspaceFiles.writeBytes(sessionId, path, base64, signal))
     }
+    bridge.prompt = async (sessionId, text, signal) => {
+      unwrap(await scope.remote.session.prompt({
+        requestId: `wordinweb-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}` as SessionRequestId,
+        sessionId,
+        mode: 'queue',
+        content: [{ type: 'text', text }],
+      }, signal))
+    }
     bridge.read = async (sessionId, path, signal) =>
       unwrap(await scope.remote.workspaceFiles.readBytes(sessionId, path, {}, signal)).data
     bridge.stat = async (sessionId, path, signal) =>
       unwrap(await scope.remote.workspaceFiles.stat(sessionId, path, signal)).absolutePath
     bridge.create = async (cwd, signal) => {
       signal.throwIfAborted()
-      const sessionId = await scope.sessions.create({ cwd })
-      // Edit Sessions are an implementation detail of the editor tab; archiving
-      // keeps them out of the Workspace list while 「查看对话」 still opens them.
-      scope.uiWorkspace.archiveSession(sessionId).catch(() => { /* cosmetic: a failure leaves the session listed */ })
-      return sessionId
+      // A `cwd` create publishes a Session the Host leaves Ungrouped; naming the
+      // Workspace that owns the directory accounts for it where the user looks.
+      const workspaceId = owningWorkspaceId(scope.workspaces.list.getSnapshot().items, cwd)
+      return workspaceId === undefined
+        ? scope.sessions.create({ cwd })
+        : scope.sessions.create({ workspaceId })
     }
-    bridge.openSession = (sessionId) => { ctx.uiWorkspace.openSession(sessionId) }
     scope.effect(() => () => {
       bridge.save = undefined
+      bridge.prompt = undefined
       bridge.create = undefined
       bridge.stat = undefined
-      bridge.openSession = undefined
       bridge.read = undefined
     })
   })
