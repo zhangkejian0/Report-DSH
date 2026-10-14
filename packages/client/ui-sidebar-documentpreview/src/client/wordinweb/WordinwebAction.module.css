@@ -15,3 +15,25 @@
 }
 
 .editButton:hover { background: rgba(0, 0, 0, 0.05); }
+
+.save,
+.saveFailed {
+  border: 1px solid var(--dsw-control-line, #3a4258);
+  border-radius: 999px;
+  background: none;
+  padding: 2px 12px;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: nowrap;
+  cursor: pointer;
+  color: var(--dsh-accent, #2563eb);
+}
+
+.saveFailed {
+  color: #ff6b6b;
+}
+
+.save:disabled {
+  opacity: 0.6;
+  cursor: default;
+}

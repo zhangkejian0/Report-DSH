@@ -9,7 +9,7 @@ import { REPORT_TEMPLATES_DIR, REPORTS_DIR, defaultReportName, isValidReportName
 import { reportBridge } from './report-bridge.ts'
 import { generationBridge } from './generation-bridge.ts'
 import { startGeneration } from './generate.ts'
-import { SAMPLE_TEMPLATE_BASE64, SAMPLE_TEMPLATE_NOTE } from './sample-template.ts'
+import { sampleTemplateFiles } from './sample-template.ts'
 import type {} from './locales.ts'
 import css from './ReportBuilderTab.module.css'
 
@@ -32,17 +32,6 @@ interface ImageRow {
 
 /** Directory path join over `/`, keeping workspace-relative form. */
 const joinDir = (parent: string, name: string): string => parent === '' ? name : `${parent}/${name}`
-
-/** Base64-encode UTF-8 text; `btoa` alone rejects characters beyond Latin-1. */
-function base64OfText(text: string): string {
-  const bytes = new TextEncoder().encode(text)
-  let binary = ''
-  const chunk = 0x8000
-  for (let offset = 0; offset < bytes.length; offset += chunk) {
-    binary += String.fromCharCode(...bytes.subarray(offset, offset + chunk))
-  }
-  return btoa(binary)
-}
 
 /** Whether one listed entry is a JPEG this workflow can analyze. */
 const isJpeg = (name: string): boolean => /\.jpe?g$/iu.test(name)
@@ -205,15 +194,20 @@ export function ReportBuilderTab({ useTabInfo, sessionId, useSessions, t }: Repo
     thumbnails.current.clear()
   }, [])
 
-  /** A thermal-analysis handoff names its image; land on it selected. */
+  /** A handoff names its image or its template; land on either selected. */
   useEffect(() => {
-    if (preselectApplied.current || entries === undefined) return
     const params = tab.navigation.params
-    const preselect = typeof params === 'object' && params !== null && 'preselectImage' in params
-      && typeof params.preselectImage === 'string'
-      ? params.preselectImage
-      : undefined
-    if (preselect === undefined) { preselectApplied.current = true; return }
+    if (typeof params !== 'object' || params === null) return
+    if ('preselectTemplate' in params && typeof params.preselectTemplate === 'string') {
+      if (templatePath === undefined) setTemplatePath(params.preselectTemplate)
+      return
+    }
+    if (preselectApplied.current || entries === undefined) return
+    if (!('preselectImage' in params) || typeof params.preselectImage !== 'string') {
+      preselectApplied.current = true
+      return
+    }
+    const preselect = params.preselectImage
     const slash = preselect.lastIndexOf('/')
     const parent = slash === -1 ? '' : preselect.slice(0, slash)
     const name = preselect.slice(slash + 1)
@@ -246,10 +240,9 @@ export function ReportBuilderTab({ useTabInfo, sessionId, useSessions, t }: Repo
   const createSample = (): void => {
     if (cwd === undefined || write === undefined) return
     setCreatingSample(true)
-    void Promise.all([
-      write(sessionId, `${REPORT_TEMPLATES_DIR}/示范模版.docx`, SAMPLE_TEMPLATE_BASE64, tab.signal),
-      write(sessionId, `${REPORT_TEMPLATES_DIR}/模版说明.md`, base64OfText(SAMPLE_TEMPLATE_NOTE), tab.signal),
-    ]).then(() => { reloadTemplates() }).finally(() => { setCreatingSample(false) })
+    void Promise.all(sampleTemplateFiles().map(file => write(sessionId, file.path, file.base64, tab.signal)))
+      .then(() => { reloadTemplates() })
+      .finally(() => { setCreatingSample(false) })
   }
 
   /** Dispatch the generation and step aside into the report Session. */

@@ -38,7 +38,8 @@ import { WordinwebBody } from '../src/client/wordinweb/WordinwebBody.tsx'
 import { WordinwebEditTab } from '../src/client/wordinweb/WordinwebEditTab.tsx'
 import { WORDINWEB_BODY_ID, WORDINWEB_EDIT_ID } from '../src/client/wordinweb/index.ts'
 import { ReportBuilderTab } from '../src/client/report/ReportBuilderTab.tsx'
-import { REPORT_BUILDER_ID } from '../src/client/report/definition.ts'
+import { TemplateLibraryTab } from '../src/client/report/TemplateLibraryTab.tsx'
+import { REPORT_BUILDER_ID, REPORT_TEMPLATES_ID } from '../src/client/report/definition.ts'
 import { CodeBody } from '../src/client/code/CodeBody.tsx'
 import { en, zh } from '../src/client/locales.ts'
 import type { textFace } from '../src/client/face.ts'
@@ -114,6 +115,7 @@ describe('ui-sidebar-documentpreview apply', () => {
       ['sidebar.right.tab.document', WORDINWEB_BODY_ID, 'sidebarWordinweb', WordinwebBody],
       ['sidebar.right.pane.tab', WORDINWEB_EDIT_ID, 'sidebarWordinweb', WordinwebEditTab],
       ['sidebar.right.pane.tab', REPORT_BUILDER_ID, 'sidebarReport', ReportBuilderTab],
+      ['sidebar.right.pane.tab', REPORT_TEMPLATES_ID, 'sidebarReport', TemplateLibraryTab],
       ['sidebar.right.tab.document', '@deepseek-ai/dsh-client-ui-sidebar-documentpreview/excel', 'sidebarExcel', LazyExcelBody],
       ['sidebar.right.tab.document', '@deepseek-ai/dsh-client-ui-sidebar-documentpreview/code', 'sidebarCodePreview', CodeBody],
     ])

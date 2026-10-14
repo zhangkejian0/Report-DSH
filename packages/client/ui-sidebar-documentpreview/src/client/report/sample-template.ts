@@ -75,3 +75,25 @@ export const SAMPLE_TEMPLATE_NOTE = `# 报告模版说明
 
 直接在本目录用任意 Word 工具编辑 .docx；也可以用「编辑」功能让 AI 帮忙改结构、加占位符。
 `
+
+/** Base64-encode UTF-8 text; `btoa` alone rejects characters beyond Latin-1. */
+export function base64OfText(text: string): string {
+  const bytes = new TextEncoder().encode(text)
+  let binary = ''
+  const chunk = 0x8000
+  for (let offset = 0; offset < bytes.length; offset += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + chunk))
+  }
+  return btoa(binary)
+}
+
+/**
+ * The file pair the sample seeding writes: the composed template and its note.
+ * @returns workspace-relative path and base64 bytes for each file.
+ */
+export function sampleTemplateFiles(): readonly { readonly path: string; readonly base64: string }[] {
+  return [
+    { path: '报告模版/示范模版.docx', base64: SAMPLE_TEMPLATE_BASE64 },
+    { path: '报告模版/模版说明.md', base64: base64OfText(SAMPLE_TEMPLATE_NOTE) },
+  ]
+}

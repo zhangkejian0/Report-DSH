@@ -1,4 +1,4 @@
-/** Report wizard: a start-page tab type, its body, and the generation service wiring. */
+/** Report wizard and template library: tab types, bodies, and the generation service wiring. */
 import type { Context } from '@deepseek-ai/cordis'
 import type { SessionRequestId } from '@deepseek-ai/dsh-api-remotes/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
@@ -6,8 +6,11 @@ import { sessionFileAddress } from '@deepseek-ai/dsh-util-workspace-path'
 import { editAddressFor } from '../wordinweb/edit-address.ts'
 import { editSessionFor, markEditSessionSeeded, recordEditSession } from '../wordinweb/edit-sessions.ts'
 import { owningWorkspaceId } from '../wordinweb/index.ts'
-import { REPORT_BUILDER_ID, reportBuilderDefinition } from './definition.ts'
+import {
+  REPORT_BUILDER_ID, REPORT_TEMPLATES_ID, reportBuilderDefinition, reportTemplatesDefinition,
+} from './definition.ts'
 import { ReportBuilderTab } from './ReportBuilderTab.tsx'
+import { TemplateLibraryTab } from './TemplateLibraryTab.tsx'
 import { reportBridge } from './report-bridge.ts'
 import { generationBridge } from './generation-bridge.ts'
 import type { GenerationDeps } from './generate.ts'
@@ -15,8 +18,8 @@ import { en, zh } from './locales.ts'
 
 declare module '@deepseek-ai/dsh-client-ui-sidebar-right/client' {
   interface SidebarRightTabParamsMap {
-    /** What a report-wizard open carries: the image a thermal handoff preselects. */
-    'report-builder': { readonly preselectImage?: string }
+    /** What a report-wizard open carries: a thermal handoff's image or a library handoff's template. */
+    'report-builder': { readonly preselectImage?: string; readonly preselectTemplate?: string }
   }
 }
 
@@ -27,19 +30,24 @@ function expectOk<T>(result: { ok: true; value: T } | { ok: false; error: { mess
 }
 
 /**
- * Register the report wizard's dictionary, its tab type with the start-page
- * entry, its body, and the Remote closures the wizard and the generation run
- * drive: directory listing, asset writing, session creation, task dispatch,
- * and the fullscreen request the wizard's layout opens with.
+ * Register the report dictionaries, the wizard and library tab types with
+ * their start-page entries, the wizard and library bodies, the save-as-template
+ * toolbar action, and the Remote closures the wizard and the generation run
+ * drive: directory listing, byte reading and writing, session creation, task
+ * dispatch, and the fullscreen request the wizard's manual control asks for.
  * @param ctx - owning plugin context.
  */
 export function apply(ctx: Context): void {
   const t = ctx.locale.bind('sidebarReport')
   ctx.effect(() => ctx.locale.register('sidebarReport', { zh, en }), 'document-report: dictionaries')
   ctx.effect(() => ctx.sidebarRightTabs.register(reportBuilderDefinition(t)), 'document-report: tab type')
+  ctx.effect(() => ctx.sidebarRightTabs.register(reportTemplatesDefinition(t)), 'document-report: library type')
   ctx.effect(() => ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register({
     name: 'sidebar.right.pane.tab', key: REPORT_BUILDER_ID, locale: 'sidebarReport',
   }, ReportBuilderTab)), 'document-report: wizard tab')
+  ctx.effect(() => ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register({
+    name: 'sidebar.right.pane.tab', key: REPORT_TEMPLATES_ID, locale: 'sidebarReport',
+  }, TemplateLibraryTab)), 'document-report: library tab')
   ctx.inject(
     ['remote', 'remote.workspaceFiles', 'remote.session', 'sessions', 'workspaces', 'sidebarRight', 'uiWorkspace'],
     (scope) => {

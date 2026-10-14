@@ -35,6 +35,21 @@ export const zh = {
   'error.write': '写入报告素材失败：{message}',
   'error.prompt': '任务下发失败：{message}',
   'fullscreen': '进入全屏',
+  'library.title': '报告模版',
+  'library.guide.title': '报告模版',
+  'library.guide.description': '管理模版：直接生成、用编辑器改、或看占位符约定',
+  'library.unavailable': '报告模版服务不可用',
+  'library.failed': '模版目录读取失败：{message}',
+  'library.generate': '生成',
+  'library.edit': '编辑',
+  'library.convention': '模版约定',
+  'library.convention.global': '全局占位符（填一次）：{{report_title}} {{company}} {{inspector}} {{date}} {{device}} {{camera_model}} {{camera_serial}} {{overall_conclusion}}',
+  'library.convention.image': '单图占位符（每张选中图一节）：{{image_file}} {{image_thermal}}（插图位） {{t_max}} {{t_max_at}} {{t_min}} {{t_avg}} {{marker_table}} {{image_comment}}',
+  'library.convention.each': '单图节两种写法：用 {{#each_image}} 与 {{/each_image}} 括起后逐图复制（推荐）；或写一个样例单图节由 AI 仿写。不放占位符也可用，AI 按模版结构仿写。',
+  'saveAs.title': '另存为模版',
+  'saveAs.saving': '保存中…',
+  'saveAs.saved': '已存入报告模版',
+  'saveAs.failed': '另存失败：{message}',
 } satisfies Record<string, string>
 
 /** Report-wizard dictionary key union. */
@@ -75,6 +90,21 @@ export const en: Record<SidebarReportKey, string> = {
   'error.write': 'Writing report assets failed: {message}',
   'error.prompt': 'Dispatching the task failed: {message}',
   'fullscreen': 'Fullscreen',
+  'library.title': 'Report templates',
+  'library.guide.title': 'Report templates',
+  'library.guide.description': 'Manage templates: generate, edit in the editor, or read the token convention',
+  'library.unavailable': 'The template library is unavailable',
+  'library.failed': 'Could not read the template directory: {message}',
+  'library.generate': 'Generate',
+  'library.edit': 'Edit',
+  'library.convention': 'Template convention',
+  'library.convention.global': 'Global tokens (filled once): {{report_title}} {{company}} {{inspector}} {{date}} {{device}} {{camera_model}} {{camera_serial}} {{overall_conclusion}}',
+  'library.convention.image': 'Per-image tokens (one section per selected image): {{image_file}} {{image_thermal}} (image slot) {{t_max}} {{t_max_at}} {{t_min}} {{t_avg}} {{marker_table}} {{image_comment}}',
+  'library.convention.each': 'Two ways to mark the image section: wrap it with {{#each_image}} and {{/each_image}} for per-image copies (recommended), or write one sample section for the AI to imitate. Templates without tokens also work.',
+  'saveAs.title': 'Save as template',
+  'saveAs.saving': 'Saving…',
+  'saveAs.saved': 'Saved to 报告模版',
+  'saveAs.failed': 'Save as template failed: {message}',
 }
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {

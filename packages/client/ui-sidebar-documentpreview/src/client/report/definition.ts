@@ -10,6 +10,12 @@ export const REPORT_BUILDER_KIND = 'report-builder'
 /** This implementation's identity in the tab system, and its body's seat key. */
 export const REPORT_BUILDER_ID = '@deepseek-ai/dsh-client-ui-sidebar-documentpreview/report-builder'
 
+/** The template library's tab kind; the guide page opens the library by it. */
+export const REPORT_TEMPLATES_KIND = 'report-templates'
+
+/** The template library's identity in the tab system, and its body's seat key. */
+export const REPORT_TEMPLATES_ID = '@deepseek-ai/dsh-client-ui-sidebar-documentpreview/report-templates'
+
 /** Workspace directory holding report templates, by product convention. */
 export const REPORT_TEMPLATES_DIR = '报告模版'
 
@@ -33,6 +39,28 @@ export function reportBuilderDefinition(t: TranslateNS<'sidebarReport'>): Sideba
       order: 15,
       title: () => t('guide.title'),
       description: () => t('guide.description'),
+      icon: GuideArtworkFiles,
+    }],
+  }
+}
+
+/**
+ * The template library's registry definition: a page type with its own guide
+ * entry, so the start page offers template management beside generation.
+ * @param t - namespace-bound translate, read fresh on every label call.
+ * @returns the definition to register.
+ */
+export function reportTemplatesDefinition(t: TranslateNS<'sidebarReport'>): SidebarRightTabDefinition {
+  return {
+    id: REPORT_TEMPLATES_ID,
+    kind: REPORT_TEMPLATES_KIND,
+    priority: 'extension',
+    title: () => t('library.title'),
+    guide: [{
+      id: 'templates',
+      order: 16,
+      title: () => t('library.guide.title'),
+      description: () => t('library.guide.description'),
       icon: GuideArtworkFiles,
     }],
   }
