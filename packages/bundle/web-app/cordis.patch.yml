@@ -282,6 +282,13 @@
     - id: office-to-pdf
       name: '@deepseek-ai/dsh-office-to-pdf'
 
+    # Thermal-image analysis through the workspace's Fotric IRtek SDK
+    # analyzer; the path names this checkout's copy of the Windows x86 CLI.
+    - id: thermal-analyze
+      name: '@deepseek-ai/dsh-thermal-analyze'
+      config:
+        analyzerPath: D:/agworkspace/docgc/deepseek-harness/fotric_sdk/AnalyzeImage/ThermalAnalyzeJson.exe
+
     # The right Sidebar's document tab: bounded file reads with selectable
     # Markdown, code, HTML, PDF, Office, and plain-text renderers.
     - id: ui-sidebar-documentpreview

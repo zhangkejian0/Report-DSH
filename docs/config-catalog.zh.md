@@ -322,7 +322,7 @@ export interface Config {
 ## `@deepseek-ai/dsh-api-workspace-files`
 
 - `inject`: `fs` · `sandboxPolicy` · `sessions` · `typert`
-- `source`: [`packages/api/workspace-files/src/index.ts:70`](../packages/api/workspace-files/src/index.ts)
+- `source`: [`packages/api/workspace-files/src/index.ts:71`](../packages/api/workspace-files/src/index.ts)
 
 ```ts config-catalog
 /** Deployment caps on one page or one listing. */
@@ -3566,6 +3566,26 @@ export type ShellDialect = 'bash' | 'pwsh'
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-terminal-bash -->
 
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-thermal-analyze -->
+<a id="deepseek-aidsh-thermal-analyze"></a>
+
+## `@deepseek-ai/dsh-thermal-analyze`
+
+- `source`: [`packages/document/thermal-analyze/src/index.ts:35`](../packages/document/thermal-analyze/src/index.ts)
+
+```ts config-catalog
+/** Analyzer process and report limits. */
+export interface Config {
+  /** Absolute path of the analyzer executable. */
+  analyzerPath: string
+  /** Analyzer deadline in milliseconds, including process startup. */
+  timeoutMs: number
+  /** Maximum accepted report size in bytes. */
+  maxOutputBytes: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-thermal-analyze -->
+
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-time-context -->
 <a id="deepseek-aidsh-time-context"></a>
 
@@ -4099,6 +4119,25 @@ export interface Config {
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-tool-web -->
+
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-tool-wordinweb -->
+<a id="deepseek-aidsh-tool-wordinweb"></a>
+
+## `@deepseek-ai/dsh-tool-wordinweb`
+
+- `inject`: `tools`
+- `source`: [`packages/document/tool-wordinweb/src/index.ts:262`](../packages/document/tool-wordinweb/src/index.ts)
+
+```ts config-catalog
+/** Configuration for the WordInWeb document tools. */
+export interface Config {
+  /** Directory that relative .docx paths resolve against (default: host process working directory). */
+  workspace?: string
+  /** Base URL of a Word editor to include in save results, e.g. http://127.0.0.1:5180. */
+  editorUrl?: string
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-tool-wordinweb -->
 
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-tool-workflow -->
 <a id="deepseek-aidsh-tool-workflow"></a>

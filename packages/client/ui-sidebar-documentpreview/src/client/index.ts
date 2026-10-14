@@ -37,6 +37,7 @@ import { apply as registerImage } from './image/index.ts'
 import { apply as registerPdf } from './pdf/index.ts'
 import { apply as registerCode } from './code/index.ts'
 import { apply as registerOffice } from './office/index.ts'
+import { apply as registerThermal } from './thermal/index.ts'
 import { apply as registerWordinweb } from './wordinweb/index.ts'
 import { apply as registerExcel } from './excel/index.ts'
 import { Config } from '../config.ts'
@@ -126,6 +127,7 @@ export function apply(ctx: ClientContext): void {
   registerImage(ctx)
   registerPdf(ctx)
   registerOffice(ctx, config.office)
+  registerThermal(ctx)
   registerWordinweb(ctx)
   registerExcel(ctx, config.excel)
   registerCode(ctx)

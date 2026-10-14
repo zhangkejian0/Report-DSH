@@ -213,6 +213,11 @@ const SERVICE_ROLES: ServiceRole[] = [
     note: 'Authorized Office bytes are converted on the Host using the declared native target engine, or Node WASM when no native target is declared.',
   },
   {
+    key: 'thermalAnalyze', pkg: 'thermal-analyze', title: 'Thermal-image analysis',
+    mode: 'core', consumers: ['client-ui-sidebar-documentpreview'],
+    note: 'One authorized radiometric JPEG per call runs through the external Fotric IRtek SDK analyzer on the Host; the provider owns process admission, deadlines, and report validation.',
+  },
+  {
     key: 'attachments',
     pkg: 'attachment',
     title: 'Durable binary attachment storage',

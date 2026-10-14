@@ -1,0 +1,13 @@
+# Bilingual-pair consistency record for thermal-analyze.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/subsystems/thermal-analyze.md
+/thermal-analysis:
+  en: fd45f86f210fba16
+  zh: 5f9cf4ef635c191c
+/thermal-analysis/ownership:
+  en: 6d98fdb4b952ccba
+  zh: 70c8e6b4070df6ca
+/thermal-analysis/requests-and-results:
+  en: e9f5133c206c66d8
+  zh: ae06204736489b3f

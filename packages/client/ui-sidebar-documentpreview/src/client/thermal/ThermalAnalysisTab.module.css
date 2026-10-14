@@ -1,0 +1,298 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  padding: 14px;
+  overflow-y: auto;
+  font-size: 13px;
+}
+
+/* ---- header: file name + identity chips ---- */
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.name {
+  font-size: 14px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.chip {
+  padding: 1px 8px;
+  border: 1px solid var(--dsw-control-line, #3a4258);
+  border-radius: 999px;
+  color: var(--dsw-text-secondary, #9aa3b5);
+  font-size: 11px;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+/* ---- KPI cards ---- */
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--dsw-control-line, #2c3346);
+  border-radius: 8px;
+  background: var(--dsw-panel-raised, rgba(128, 138, 160, 0.08));
+  border-left: 3px solid var(--dsw-control-line, #3a4258);
+}
+
+.kpiHot {
+  border-left-color: #ff6b5e;
+}
+
+.kpiCold {
+  border-left-color: #5ab6ff;
+}
+
+.kpiLabel {
+  color: var(--dsw-text-secondary, #9aa3b5);
+  font-size: 11px;
+}
+
+.kpiValue {
+  font-size: 17px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.3;
+}
+
+.kpiHot .kpiValue {
+  color: #ff8a7d;
+}
+
+.kpiCold .kpiValue {
+  color: #7cc4ff;
+}
+
+.kpiSub {
+  color: var(--dsw-text-secondary, #9aa3b5);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---- thermal field card with palette legend ---- */
+
+.fieldCard {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 8px;
+  border: 1px solid var(--dsw-control-line, #2c3346);
+  border-radius: 8px;
+  background: var(--dsw-panel-raised, rgba(128, 138, 160, 0.08));
+}
+
+.field {
+  position: relative;
+  max-width: 100%;
+  line-height: 0;
+  user-select: none;
+  cursor: crosshair;
+}
+
+.fieldImage {
+  max-width: 100%;
+  height: auto;
+  border-radius: 5px;
+}
+
+.markerBox {
+  position: absolute;
+  border: 1.5px solid #5aa9ff;
+  border-radius: 3px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
+
+.hotSpot {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.hotSpot::before,
+.hotSpot::after {
+  content: '';
+  position: absolute;
+  background: #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6);
+}
+
+.hotSpot::before {
+  left: 6px;
+  top: 0;
+  width: 2px;
+  height: 14px;
+}
+
+.hotSpot::after {
+  left: 0;
+  top: 6px;
+  width: 14px;
+  height: 2px;
+}
+
+.hoverBadge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #fff;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.5;
+  pointer-events: none;
+}
+
+.legend {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.legendBar {
+  display: block;
+  width: 100%;
+  height: 8px;
+  border-radius: 3px;
+}
+
+.legendTicks {
+  display: flex;
+  justify-content: space-between;
+  color: var(--dsw-text-secondary, #9aa3b5);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+}
+
+/* ---- capture parameters ---- */
+
+.params {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+  margin: 0;
+}
+
+.param {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid var(--dsw-control-line, #2c3346);
+  border-radius: 6px;
+  background: var(--dsw-panel-raised, rgba(128, 138, 160, 0.05));
+}
+
+.param dt {
+  color: var(--dsw-text-secondary, #9aa3b5);
+  font-size: 11px;
+}
+
+.param dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- embedded marker table ---- */
+
+.markers {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid var(--dsw-control-line, #2c3346);
+  border-radius: 8px;
+  overflow: hidden;
+  font-variant-numeric: tabular-nums;
+}
+
+.markers th,
+.markers td {
+  padding: 5px 12px;
+  text-align: right;
+}
+
+.markers th:first-child,
+.markers td:first-child {
+  text-align: left;
+}
+
+.markers th {
+  background: var(--dsw-panel-raised, rgba(128, 138, 160, 0.12));
+  color: var(--dsw-text-secondary, #9aa3b5);
+  font-weight: 500;
+  font-size: 11px;
+}
+
+.markers tbody tr + tr td {
+  border-top: 1px solid var(--dsw-control-line, rgba(128, 138, 160, 0.18));
+}
+
+.markerRowGlobal td {
+  color: var(--dsw-text-secondary, #9aa3b5);
+}
+
+.markerDot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 6px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45);
+  vertical-align: 1px;
+}
+
+.hotValue {
+  color: #ff8a7d;
+  font-weight: 600;
+}
+
+/* ---- status states ---- */
+
+.status {
+  padding: 16px;
+  font-size: 13px;
+}
+
+.retry {
+  margin-left: 4px;
+  padding: 1px 8px;
+  border: 1px solid var(--dsw-control-line, #3a4258);
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}

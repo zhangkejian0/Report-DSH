@@ -1,0 +1,34 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/document/thermal-analyze/README.md
+/:
+  en: dc8bd42698927257
+  zh: 3fe44ff62ec2dcc6
+/deepseek-ai-dsh-thermal-analyze:
+  en: 81e8ad6834e4dc67
+  zh: a08e945daacac017
+/deepseek-ai-dsh-thermal-analyze/summary:
+  en: efa36d87fcfa55d8
+  zh: fff3917aff581617
+/deepseek-ai-dsh-thermal-analyze/table-of-contents:
+  en: 76368b6b1da79c80
+  zh: 5e2b2150b7d76f33
+/deepseek-ai-dsh-thermal-analyze/use-this-package:
+  en: f7c0ef73caecab02
+  zh: 668aeadb343c640b
+/deepseek-ai-dsh-thermal-analyze/understand-the-implementation:
+  en: 7517210c1971d9b6
+  zh: ad5e99f72d10e60c
+/deepseek-ai-dsh-thermal-analyze/model-experience:
+  en: 76543ee665bb0946
+  zh: 001114cbc1889b47
+/deepseek-ai-dsh-thermal-analyze/model-experience/kv-cache-effect:
+  en: 3995155053c0be7f
+  zh: e87dfeb0f76e539d
+/deepseek-ai-dsh-thermal-analyze/known-limitations-and-deferred-work:
+  en: 977009286ca9300b
+  zh: 8f466a0808df79e9
+/deepseek-ai-dsh-thermal-analyze/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 6f5a05a57518223b

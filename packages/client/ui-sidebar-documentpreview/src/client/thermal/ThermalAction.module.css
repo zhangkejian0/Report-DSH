@@ -1,0 +1,23 @@
+.analyzeButton {
+  display: flex;
+  align-items: center;
+  height: 24px;
+  margin: 0 4px;
+  padding: 0 10px;
+  border: 1px solid var(--dsw-control-line, #3a4258);
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.analyzeButton:hover {
+  background: var(--dsw-control-hover, rgba(128, 138, 160, 0.16));
+}
+
+.analyzeButton:active {
+  transform: translateY(0.5px);
+}
