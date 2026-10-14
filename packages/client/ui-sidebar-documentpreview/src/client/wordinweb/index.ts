@@ -70,7 +70,7 @@ function normalizePath(path: string): string {
  * @param directory - absolute directory holding the document.
  * @returns the deepest matching Workspace, or undefined when none contains it.
  */
-function owningWorkspaceId(items: readonly WorkspaceView[], directory: string): WorkspaceId | undefined {
+export function owningWorkspaceId(items: readonly WorkspaceView[], directory: string): WorkspaceId | undefined {
   const target = normalizePath(directory)
   let best: WorkspaceView | undefined
   let bestLength = -1

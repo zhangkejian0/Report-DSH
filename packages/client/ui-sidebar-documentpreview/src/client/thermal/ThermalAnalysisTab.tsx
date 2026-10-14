@@ -5,6 +5,7 @@ import type { ThermalAnalysis, ThermalMarker } from '@deepseek-ai/dsh-thermal-an
 import { basenameOf } from '../definition.ts'
 import { analysisTargetOf, parseAnalysisAddress } from './thermal-address.ts'
 import { analyzeBridge } from './analyze-bridge.ts'
+import { REPORT_BUILDER_KIND } from '../report/definition.ts'
 import type {} from './locales.ts'
 import css from './ThermalAnalysisTab.module.css'
 
@@ -145,6 +146,16 @@ export function ThermalAnalysisTab({ useTabInfo, t }: ThermalAnalysisTabProps): 
           {camera.model !== '' && <span className={css.chip}>{camera.model}</span>}
           {camera.serialNo !== '' && <span className={css.chip}>{t('serialNo')} {camera.serialNo}</span>}
           {frame.timestamp !== '' && <span className={css.chip}>{frame.timestamp}</span>}
+          <button
+            type="button"
+            className={css.reportButton}
+            title={t('reportHint')}
+            onClick={() => {
+              tab.actions.openTab(REPORT_BUILDER_KIND, { params: { preselectImage: target?.path } })
+            }}
+          >
+            {t('report')}
+          </button>
         </div>
       </header>
 

@@ -39,6 +39,7 @@ import { apply as registerCode } from './code/index.ts'
 import { apply as registerOffice } from './office/index.ts'
 import { apply as registerThermal } from './thermal/index.ts'
 import { apply as registerWordinweb } from './wordinweb/index.ts'
+import { apply as registerReport } from './report/index.ts'
 import { apply as registerExcel } from './excel/index.ts'
 import { Config } from '../config.ts'
 
@@ -129,6 +130,7 @@ export function apply(ctx: ClientContext): void {
   registerOffice(ctx, config.office)
   registerThermal(ctx)
   registerWordinweb(ctx)
+  registerReport(ctx)
   registerExcel(ctx, config.excel)
   registerCode(ctx)
 }

@@ -38,6 +38,18 @@
   white-space: nowrap;
 }
 
+.reportButton {
+  padding: 1px 8px;
+  border: 1px solid var(--dsw-control-line, #3a4258);
+  border-radius: 999px;
+  color: var(--dsw-accent, #2563eb);
+  background: none;
+  font-size: 11px;
+  line-height: 1.6;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
 /* ---- KPI cards ---- */
 
 .kpis {

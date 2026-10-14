@@ -32,6 +32,8 @@ export const zh = {
   adRange: 'AD 原始值',
   hover: '({x}, {y})  {temp}℃',
   retry: '重试',
+  report: '用此图生成报告',
+  reportHint: '打开报告向导并预选此图',
 } satisfies Record<string, string>
 
 /** Thermal-analysis dictionary keys. */
@@ -71,6 +73,8 @@ export const en = {
   adRange: 'Raw AD',
   hover: '({x}, {y})  {temp}°C',
   retry: 'Retry',
+  report: 'Generate report with this image',
+  reportHint: 'Open the report wizard with this image preselected',
 } satisfies Record<ThermalAnalysisKey, string>
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {

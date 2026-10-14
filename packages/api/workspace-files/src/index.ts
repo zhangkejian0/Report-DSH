@@ -19,8 +19,8 @@
  * file content across the wire, which is a different level of exposure.
  */
 
-import { writeFile } from 'node:fs/promises'
-import { posix, win32 } from 'node:path'
+import { mkdir, writeFile } from 'node:fs/promises'
+import { dirname, posix, win32 } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import type {} from '@deepseek-ai/dsh-fs'
@@ -295,9 +295,11 @@ export class WorkspaceFiles extends TypertRemoteService {
 
   /**
    * Write complete bytes to one workspace file (fork extension for the
-   * WordInWeb sidebar editor). Authorization and resolution reuse the read
-   * path; the bytes then land on the resolved host path directly, because
-   * the composed filesystem seam exposes no binary write.
+   * WordInWeb sidebar editor), creating the file and missing parent
+   * directories when absent. Authorization and resolution reuse the read
+   * path's workspace containment; an existing non-file entry is refused, and
+   * the bytes land on the resolved host path directly, because the composed
+   * filesystem seam exposes no binary write.
    * @param workspaceFileScope - header-derived workspace root for the Session identity on the wire.
    * @param path - absolute path or path relative to the workspace root.
    * @param base64 - complete file bytes, base64-encoded for JSON wire safety.
@@ -311,12 +313,22 @@ export class WorkspaceFiles extends TypertRemoteService {
     base64: string,
     signal: AbortSignal,
   ): Promise<WorkspaceFileStat> {
-    const { target } = await this.locateFile(workspaceFileScope, path, signal)
+    if (path.length === 0) throw new RemoteError('gateway/bad-request', 'path is required', {})
+    const { workspaceRoot } = workspaceFileScope
+    const root = await this.ctx.fs.resolve(workspaceRoot, { signal })
+    const target = await this.confine(root, workspaceRoot, path, signal)
     signal.throwIfAborted()
     const data = Buffer.from(base64, 'base64')
     if (data.byteLength === 0) {
       throw new RemoteError('workspace-file/empty-write', 'refusing an empty document write', { path })
     }
+    const entry = await this.ctx.fs.lstat(path, { cwd: workspaceRoot }, signal)
+    if (entry !== undefined && entry.type !== 'file') {
+      throw new RemoteError('workspace-file/not-regular-file', `"${path}" is a ${entry.type}`, { path, kind: entry.type })
+    }
+    // Creating missing parents keeps one write self-sufficient for a first save
+    // into an output directory that does not exist yet.
+    await mkdir(dirname(this.ctx.fs.processPath(target)), { recursive: true })
     await writeFile(this.ctx.fs.processPath(target), data)
     const info = await this.ctx.fs.stat(target, signal)
     if (info === undefined) {

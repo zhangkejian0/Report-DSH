@@ -1,0 +1,253 @@
+/* The report wizard: three columns while fullscreen, one stacked column docked. */
+
+.root {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  min-height: 100%;
+  align-content: start;
+  grid-template-columns: 1fr;
+  overflow-y: auto;
+}
+
+.root[data-fullscreen='true'] {
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr) minmax(200px, 260px);
+  align-items: stretch;
+  align-content: stretch;
+  overflow: hidden;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  border: 1px solid var(--dsh-border, #d0d5dd);
+  border-radius: 10px;
+  padding: 12px;
+  background: var(--dsh-surface, #fff);
+}
+
+.root[data-fullscreen='true'] .images {
+  overflow-y: auto;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.note {
+  margin: 0;
+  font-size: 12px;
+  color: var(--dsh-muted, #667085);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.link {
+  align-self: flex-start;
+  border: none;
+  background: none;
+  padding: 2px 4px;
+  font-size: 12px;
+  color: var(--dsh-accent, #2563eb);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.status {
+  margin: 0;
+  padding: 16px;
+  font-size: 12px;
+  color: var(--dsh-muted, #667085);
+}
+
+.fullscreenRow {
+  position: absolute;
+  top: 4px;
+  right: 8px;
+}
+
+.templateList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.template {
+  text-align: left;
+  border: 1px solid var(--dsh-border, #d0d5dd);
+  border-radius: 8px;
+  background: none;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.templateActive {
+  border-color: var(--dsh-accent, #2563eb);
+  background: color-mix(in srgb, var(--dsh-accent, #2563eb) 10%, transparent);
+  font-weight: 600;
+}
+
+.directory {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.directoryPath {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.directoryChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  border: 1px solid var(--dsh-border, #d0d5dd);
+  border-radius: 999px;
+  background: none;
+  padding: 2px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.imageGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.imageCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 1px solid var(--dsh-border, #d0d5dd);
+  border-radius: 8px;
+  padding: 6px;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.imageCardActive {
+  border-color: var(--dsh-accent, #2563eb);
+  background: color-mix(in srgb, var(--dsh-accent, #2563eb) 8%, transparent);
+}
+
+.imageCard input {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+}
+
+.imageThumb {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: contain;
+  border-radius: 4px;
+  background: #10131a;
+}
+
+.imagePlaceholder {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 4px;
+  background: var(--dsh-shade, #eef1f5);
+}
+
+.imageName {
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.badge,
+.badgeFailed {
+  font-size: 11px;
+  border-radius: 4px;
+  padding: 1px 6px;
+  align-self: flex-start;
+}
+
+.badge {
+  color: #b42318;
+  background: color-mix(in srgb, #b42318 10%, transparent);
+}
+
+.badgeFailed {
+  color: var(--dsh-muted, #667085);
+  background: color-mix(in srgb, #667085 12%, transparent);
+}
+
+.imageActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.field input {
+  border: 1px solid var(--dsh-border, #d0d5dd);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 12px;
+}
+
+.location {
+  margin: 0;
+  font-size: 12px;
+  color: var(--dsh-muted, #667085);
+  word-break: break-all;
+}
+
+.preflight {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.generate {
+  margin-top: auto;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--dsh-accent, #2563eb);
+  cursor: pointer;
+}
+
+.generate:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

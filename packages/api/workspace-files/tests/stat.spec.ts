@@ -75,4 +75,11 @@ describe('workspaceFiles.stat', () => {
     expect((await failureOf(endpoint.stat(harness.scope, 'nope.txt', signal()))).code).toBe('workspace-file/not-found')
     expect((await failureOf(endpoint.stat(harness.scope, '', signal()))).code).toBe('gateway/bad-request')
   })
+
+  it('writeBytes creates missing parent directories and reports the saved file', async () => {
+    const base64 = Buffer.from('hello new directory').toString('base64')
+    const result = await harness.endpoint().writeBytes(harness.scope, join('报告', 'demo', 'a.docx'), base64, signal())
+    expect(result.bytes).toBe(19)
+    expect(await harness.endpoint().read(harness.scope, join('报告', 'demo', 'a.docx'), {}, signal())).toMatchObject({ eof: true })
+  })
 })

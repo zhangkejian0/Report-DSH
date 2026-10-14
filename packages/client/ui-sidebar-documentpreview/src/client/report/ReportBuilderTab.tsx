@@ -1,0 +1,431 @@
+/** The report wizard hosted as its own right-Sidebar tab. */
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+import type { ThermalAnalysis } from '@deepseek-ai/dsh-thermal-analyze/types'
+import type { WorkspaceDirectoryEntry } from '@deepseek-ai/dsh-api-workspace-files/types'
+import { IconRefreshOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
+import { analyzeBridge } from '../thermal/analyze-bridge.ts'
+import { REPORT_TEMPLATES_DIR, REPORTS_DIR, defaultReportName, isValidReportName } from './definition.ts'
+import { reportBridge } from './report-bridge.ts'
+import { generationBridge } from './generation-bridge.ts'
+import { startGeneration } from './generate.ts'
+import { SAMPLE_TEMPLATE_BASE64, SAMPLE_TEMPLATE_NOTE } from './sample-template.ts'
+import type {} from './locales.ts'
+import css from './ReportBuilderTab.module.css'
+
+/** Props of the wizard tab: its own tab reader, session standards, and copy. */
+export type ReportBuilderTabProps =
+  PropsRuntime<'sidebar.right.pane.tab'> & PropsLocale<'sidebarReport'>
+
+/** One listed image's preflight state. */
+interface ImageRow {
+  readonly path: string
+  readonly name: string
+  readonly selected: boolean
+  readonly state: 'idle' | 'analyzing' | 'ok' | 'failed'
+  readonly analysis?: ThermalAnalysis
+  /** Object URL of the file's own JPEG preview, once loaded. */
+  readonly previewUrl?: string
+  /** Whether the JPEG preview is still loading. */
+  readonly loadingPreview?: boolean
+}
+
+/** Directory path join over `/`, keeping workspace-relative form. */
+const joinDir = (parent: string, name: string): string => parent === '' ? name : `${parent}/${name}`
+
+/** Base64-encode UTF-8 text; `btoa` alone rejects characters beyond Latin-1. */
+function base64OfText(text: string): string {
+  const bytes = new TextEncoder().encode(text)
+  let binary = ''
+  const chunk = 0x8000
+  for (let offset = 0; offset < bytes.length; offset += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + chunk))
+  }
+  return btoa(binary)
+}
+
+/** Whether one listed entry is a JPEG this workflow can analyze. */
+const isJpeg = (name: string): boolean => /\.jpe?g$/iu.test(name)
+
+/** Gateway failure code of one thrown Remote result, when it carries one. */
+const codeOf = (cause: unknown): string | undefined =>
+  typeof cause === 'object' && cause !== null && 'code' in cause && typeof cause.code === 'string'
+    ? cause.code
+    : undefined
+
+/** An image row whose analysis finished, for dispatch. */
+interface AnalyzedRow extends ImageRow {
+  readonly analysis: ThermalAnalysis
+}
+
+/**
+ * Collect the two structural inputs of one report — template and thermal
+ * images — with per-image preflight analysis, then dispatch the generation
+ * task and hand the main view to the report Session. The layout widens to
+ * three columns while its pane is fullscreen and stacks in a docked column;
+ * generation starts only with a chosen template, at least one analyzed image,
+ * and a filesystem-safe report name. A blank host Session is adopted instead
+ * of forking another one, so reaching the wizard from the start page leaves
+ * no empty Session behind.
+ * @param props - this tab's reader, session standards, and the report dictionary.
+ * @returns the wizard, or its unavailable notice while the Remote face is down.
+ */
+export function ReportBuilderTab({ useTabInfo, sessionId, useSessions, t }: ReportBuilderTabProps): ReactNode {
+  const { tab, sidebar } = useTabInfo()
+  const cwd = useSessions(sessions => sessions.byId[sessionId]?.cwd)
+  const blank = useSessions(sessions => sessions.byId[sessionId]?.blank)
+  const rootRef = useRef<HTMLDivElement>(null)
+  const preselectApplied = useRef(false)
+  /** Analyses by image path, surviving directory switches. */
+  const analyses = useRef(new Map<string, { analysis: ThermalAnalysis } | { failure: string }>())
+  /** Original-image thumbnail object URLs by path, revoked together on unmount. */
+  const thumbnails = useRef(new Map<string, string>())
+
+  const [templates, setTemplates] = useState<readonly string[]>()
+  const [templatesError, setTemplatesError] = useState<string>()
+  const [templatePath, setTemplatePath] = useState<string>()
+  const [creatingSample, setCreatingSample] = useState(false)
+  const [dir, setDir] = useState('')
+  const [entries, setEntries] = useState<readonly WorkspaceDirectoryEntry[]>()
+  const [dirError, setDirError] = useState<string>()
+  const [rows, setRows] = useState<readonly ImageRow[]>([])
+  const [reportName, setReportName] = useState('')
+  const [phase, setPhase] = useState<'collecting' | 'dispatching'>('collecting')
+  const [dispatchError, setDispatchError] = useState<string>()
+
+  const listDirectory = reportBridge.list
+  const write = reportBridge.write
+
+  const reloadTemplates = useCallback((): (() => void) | undefined => {
+    if (cwd === undefined || listDirectory === undefined) return
+    const closed = { settled: false }
+    void listDirectory(sessionId, REPORT_TEMPLATES_DIR, tab.signal).then((found) => {
+      if (closed.settled) return
+      setTemplates(found.filter(entry => entry.type === 'file' && /\.docx$/iu.test(entry.name))
+        .map(entry => `${REPORT_TEMPLATES_DIR}/${entry.name}`))
+      setTemplatesError(undefined)
+    }, (cause: unknown) => {
+      if (closed.settled) return
+      setTemplates([])
+      // A workspace without the directory yet is the empty state, not a failure.
+      if (codeOf(cause) === 'workspace-file/not-found') setTemplatesError(undefined)
+      else setTemplatesError(cause instanceof Error ? cause.message : String(cause))
+    })
+    return () => { closed.settled = true }
+  }, [cwd, listDirectory, sessionId, tab.signal])
+
+  useEffect(() => reloadTemplates(), [reloadTemplates])
+
+  /** One level of the image browser: entries, rows, and directory failures. */
+  useEffect(() => {
+    if (cwd === undefined || listDirectory === undefined) return
+    const closed = { settled: false }
+    // The listing endpoint refuses an empty path; the browser's root is the
+    // session's own workspace root, every deeper level its relative path.
+    void listDirectory(sessionId, dir === '' ? cwd : dir, tab.signal).then((found) => {
+      if (closed.settled) return
+      setEntries(found)
+      setDirError(undefined)
+      setRows(found.filter(entry => entry.type === 'file' && isJpeg(entry.name)).map((entry) => {
+        const path = joinDir(dir, entry.name)
+        const cached = analyses.current.get(path)
+        const state = cached === undefined ? 'idle' as const : 'analysis' in cached ? 'ok' as const : 'failed' as const
+        const previewUrl = thumbnails.current.get(path)
+        return {
+          path, name: entry.name, selected: false, state,
+          ...(cached !== undefined && 'analysis' in cached ? { analysis: cached.analysis } : {}),
+          ...(previewUrl === undefined ? { loadingPreview: true } : { previewUrl }),
+        }
+      }))
+    }, (cause: unknown) => {
+      if (closed.settled) return
+      setEntries(undefined)
+      setRows([])
+      setDirError(cause instanceof Error ? cause.message : String(cause))
+    })
+    return () => { closed.settled = true }
+  }, [cwd, listDirectory, sessionId, dir, tab.signal])
+
+  /** Preflight: analyze every newly selected image once, caching the outcome. */
+  useEffect(() => {
+    const analyze = analyzeBridge.analyze
+    if (analyze === undefined) return
+    const pending = rows.filter(row => row.selected && row.state === 'idle')
+    if (pending.length === 0) return
+    setRows(current => current.map(row =>
+      row.selected && row.state === 'idle' ? { ...row, state: 'analyzing' } : row))
+    for (const row of pending) {
+      void analyze(sessionId, row.path, tab.signal).then((analysis) => {
+        analyses.current.set(row.path, { analysis })
+        return { path: row.path, analysis } as const
+      }, (cause: unknown) => {
+        const failure = cause instanceof Error ? cause.message : String(cause)
+        analyses.current.set(row.path, { failure })
+        return { path: row.path, failure } as const
+      }).then((result) => {
+        setRows(current => current.map(item => item.path === result.path
+          ? 'analysis' in result
+            ? { ...item, state: 'ok', analysis: result.analysis }
+            : { ...item, state: 'failed' }
+          : item))
+      })
+    }
+  }, [rows, sessionId, tab.signal])
+
+  /**
+   * Load every listed image's own JPEG as a thumbnail: the visible-light
+   * preview the file carries, replaced by the palette render once analysis
+   * succeeds. Object URLs are cached per path and revoked once on unmount.
+   */
+  useEffect(() => {
+    const read = reportBridge.read
+    if (read === undefined) return
+    const wanted = rows.filter(row => row.previewUrl === undefined && !thumbnails.current.has(row.path))
+    if (wanted.length === 0) return
+    setRows(current => current.map(row =>
+      wanted.some(pending => pending.path === row.path) ? { ...row, loadingPreview: true } : row))
+    for (const row of wanted) {
+      void read(sessionId, row.path, tab.signal).then((bytes) => {
+        const url = URL.createObjectURL(new Blob([new Uint8Array(bytes)], { type: 'image/jpeg' }))
+        thumbnails.current.set(row.path, url)
+        return { path: row.path, url } as const
+      }, () => ({ path: row.path, url: undefined } as const)).then((result) => {
+        setRows(current => current.map(item => item.path === result.path
+          ? result.url === undefined
+            ? { ...item, loadingPreview: false }
+            : { ...item, loadingPreview: false, previewUrl: result.url }
+          : item))
+      })
+    }
+  }, [rows, sessionId, tab.signal])
+
+  /** Revoke every thumbnail URL this tab minted. */
+  useEffect(() => () => {
+    for (const url of thumbnails.current.values()) URL.revokeObjectURL(url)
+    thumbnails.current.clear()
+  }, [])
+
+  /** A thermal-analysis handoff names its image; land on it selected. */
+  useEffect(() => {
+    if (preselectApplied.current || entries === undefined) return
+    const params = tab.navigation.params
+    const preselect = typeof params === 'object' && params !== null && 'preselectImage' in params
+      && typeof params.preselectImage === 'string'
+      ? params.preselectImage
+      : undefined
+    if (preselect === undefined) { preselectApplied.current = true; return }
+    const slash = preselect.lastIndexOf('/')
+    const parent = slash === -1 ? '' : preselect.slice(0, slash)
+    const name = preselect.slice(slash + 1)
+    if (parent !== dir) { setDir(parent); return }
+    preselectApplied.current = true
+    setRows(current => current.some(row => row.name === name)
+      ? current.map(row => row.name === name ? { ...row, selected: true } : row)
+      : current)
+  })
+
+  const selected = useMemo(() => rows.filter(row => row.selected), [rows])
+  const analyzedOk = useMemo(
+    () => selected.filter((row): row is AnalyzedRow => row.state === 'ok' && row.analysis !== undefined),
+    [selected],
+  )
+  const defaultName = useMemo(
+    () => templatePath === undefined ? '' : defaultReportName(templatePath, new Date()),
+    [templatePath],
+  )
+  const name = reportName.trim() === '' ? defaultName : reportName.trim()
+  const nameValid = isValidReportName(name)
+  const canGenerate = templatePath !== undefined && analyzedOk.length > 0 && nameValid
+
+  const directories = useMemo(() =>
+    (entries ?? []).filter(entry => entry.type === 'directory')
+      .map(entry => ({ name: entry.name, path: joinDir(dir, entry.name) })),
+  [entries, dir])
+
+  /** Write the embedded sample template and its usage note into the empty directory. */
+  const createSample = (): void => {
+    if (cwd === undefined || write === undefined) return
+    setCreatingSample(true)
+    void Promise.all([
+      write(sessionId, `${REPORT_TEMPLATES_DIR}/示范模版.docx`, SAMPLE_TEMPLATE_BASE64, tab.signal),
+      write(sessionId, `${REPORT_TEMPLATES_DIR}/模版说明.md`, base64OfText(SAMPLE_TEMPLATE_NOTE), tab.signal),
+    ]).then(() => { reloadTemplates() }).finally(() => { setCreatingSample(false) })
+  }
+
+  /** Dispatch the generation and step aside into the report Session. */
+  const generate = (): void => {
+    if (phase !== 'collecting' || !canGenerate || cwd === undefined) return
+    const chosenTemplate = templatePath
+    if (chosenTemplate === undefined) return
+    const deps = generationBridge.deps
+    if (deps === undefined) {
+      setDispatchError(t('error.prompt', { message: 'remote unavailable' }))
+      return
+    }
+    setPhase('dispatching')
+    setDispatchError(undefined)
+    void startGeneration({
+      hostSessionId: sessionId,
+      adoptHost: blank === true,
+      workspaceRoot: cwd,
+      templatePath: chosenTemplate,
+      reportName: name,
+      images: analyzedOk.map(row => ({ path: row.path, analysis: row.analysis })),
+    }, deps, tab.signal).then(() => {
+      tab.actions.close()
+    }, (cause: unknown) => {
+      setPhase('collecting')
+      setDispatchError(cause instanceof Error ? cause.message : String(cause))
+    })
+  }
+
+  if (cwd === undefined || listDirectory === undefined || write === undefined) {
+    return <p className={css.status} role="status">{t('directory.failed', { message: 'workspace unavailable' })}</p>
+  }
+
+  return (
+    <div ref={rootRef} className={css.root} data-report-wizard data-fullscreen={sidebar.fullscreen ? 'true' : 'false'}>
+      {!sidebar.fullscreen && (
+        <div className={css.fullscreenRow}>
+          <button type="button" className={css.link}
+            onClick={() => { const root = rootRef.current; if (root !== null) reportBridge.requestFullscreen?.(root) }}>
+            {t('fullscreen')}
+          </button>
+        </div>
+      )}
+
+      <section className={`${css.section} ${css.templates}`}>
+        <h2 className={css.sectionTitle}>{t('section.templates')}</h2>
+        {templatesError !== undefined && <p className={css.note}>{t('templates.failed', { message: templatesError })}</p>}
+        {templates !== undefined && templates.length === 0 && templatesError === undefined && (
+          <div className={css.note}>
+            <p>{t('templates.empty')}</p>
+            <button type="button" className={css.link} onClick={createSample} disabled={creatingSample}>
+              {creatingSample ? t('templates.creating') : t('templates.createSample')}
+            </button>
+          </div>
+        )}
+        <ul className={css.templateList}>
+          {templates?.map(path => (
+            <li key={path}>
+              <button
+                type="button"
+                className={path === templatePath ? `${css.template} ${css.templateActive}` : css.template}
+                onClick={() => { setTemplatePath(path === templatePath ? undefined : path) }}
+              >
+                {path.slice(REPORT_TEMPLATES_DIR.length + 1)}
+              </button>
+            </li>
+          ))}
+        </ul>
+        <button type="button" className={css.link} onClick={() => { reloadTemplates() }}>
+          <IconRefreshOutlineRegular /> {t('templates.refresh')}
+        </button>
+      </section>
+
+      <section className={`${css.section} ${css.images}`}>
+        <h2 className={css.sectionTitle}>{t('section.images')}</h2>
+        <div className={css.directory}>
+          <span className={css.directoryPath}>{dir === '' ? t('directory.root') : dir}</span>
+          {dir !== '' && (
+            <button type="button" className={css.link}
+              onClick={() => { setDir(dir.includes('/') ? dir.slice(0, dir.lastIndexOf('/')) : '') }}>
+              {t('directory.up')}
+            </button>
+          )}
+        </div>
+        {directories.length > 0 && (
+          <div className={css.directoryChips}>
+            {directories.map(item => (
+              <button type="button" key={item.path} className={css.chip} onClick={() => { setDir(item.path) }}>
+                {item.name}
+              </button>
+            ))}
+          </div>
+        )}
+        {dirError !== undefined && <p className={css.note}>{t('directory.failed', { message: dirError })}</p>}
+        {entries !== undefined && rows.length === 0 && dirError === undefined && (
+          <p className={css.note}>{t('images.empty')}</p>
+        )}
+        <div className={css.imageGrid}>
+          {rows.map((row) => {
+            // The palette render once analyzed, the file's own JPEG until then.
+            const thumb = row.analysis !== undefined && row.analysis.images.thermal !== ''
+              ? `data:image/png;base64,${row.analysis.images.thermal}`
+              : row.previewUrl
+            const badge = row.state === 'analyzing' ? t('images.analyzing')
+              : row.state === 'ok' && row.analysis !== undefined
+                ? t('images.max', { max: row.analysis.stats.max.toFixed(1) })
+                : row.state === 'failed' ? t('images.failed')
+                  : undefined
+            return (
+              <label key={row.path} className={row.selected ? `${css.imageCard} ${css.imageCardActive}` : css.imageCard}>
+                <input
+                  type="checkbox"
+                  checked={row.selected}
+                  onChange={(event) => {
+                    setRows(current => current.map(item => item.path === row.path
+                      ? { ...item, selected: event.target.checked }
+                      : item))
+                  }}
+                />
+                {thumb !== undefined
+                  ? <img className={css.imageThumb} src={thumb} alt={row.name} draggable={false} />
+                  : <span className={css.imagePlaceholder} />}
+                <span className={css.imageName} title={row.path}>{row.name}</span>
+                {badge !== undefined && (
+                  <span className={row.state === 'failed' ? css.badgeFailed : css.badge}>{badge}</span>
+                )}
+              </label>
+            )
+          })}
+        </div>
+        <div className={css.imageActions}>
+          <span>{t('images.selected', { count: String(selected.length) })}</span>
+          <button type="button" className={css.link}
+            onClick={() => { setRows(current => current.map(row => ({ ...row, selected: true }))) }}>
+            {t('images.selectAll')}
+          </button>
+          <button type="button" className={css.link}
+            onClick={() => { setRows(current => current.map(row => ({ ...row, selected: false }))) }}>
+            {t('images.clear')}
+          </button>
+        </div>
+      </section>
+
+      <section className={`${css.section} ${css.output}`}>
+        <h2 className={css.sectionTitle}>{t('section.output')}</h2>
+        <label className={css.field}>
+          <span>{t('output.name')}</span>
+          <input
+            value={reportName}
+            placeholder={defaultName}
+            onChange={(event) => { setReportName(event.target.value) }}
+            disabled={phase === 'dispatching'}
+          />
+        </label>
+        <p className={css.location}>
+          {t('output.location')}：{REPORTS_DIR}/{nameValid ? name : '…'}/
+        </p>
+        {!nameValid && (templatePath !== undefined || reportName.trim() !== '') && (
+          <p className={css.note}>{t('output.invalidName')}</p>
+        )}
+        <p className={css.preflight}>
+          {t('preflight', { ok: String(analyzedOk.length), total: String(selected.length) })}
+        </p>
+        {phase === 'collecting' && templatePath === undefined && <p className={css.note}>{t('generate.needTemplate')}</p>}
+        {phase === 'collecting' && templatePath !== undefined && analyzedOk.length === 0
+          && <p className={css.note}>{t('generate.needImages')}</p>}
+        {dispatchError !== undefined && <p className={css.note}>{dispatchError}</p>}
+        <button
+          type="button"
+          className={css.generate}
+          disabled={!canGenerate || phase === 'dispatching'}
+          onClick={generate}
+        >
+          {phase === 'dispatching' ? t('generating') : t('generate')}
+        </button>
+      </section>
+    </div>
+  )
+}
