@@ -2,10 +2,12 @@
  * Model-facing Word document tools over the WordInWeb agent toolkit.
  *
  * Registers the portable `word_document_*` tool set from `@wordinweb/agent`
- * (compose, capabilities, inspect, edit, project, patch, asset) plus three
+ * (compose, capabilities, inspect, edit, project, patch, asset) plus four
  * filesystem conveniences (`word_document_new`, `word_document_open`,
- * `word_document_save`). One `AgentDocument` is held per plugin instance;
- * `revision` fields are auto-filled from the live document when omitted.
+ * `word_document_save`, `word_document_add_image`). Every agent (session)
+ * holds its own `AgentDocument`, so concurrent sessions edit independent
+ * documents; `revision` fields are auto-filled from the calling agent's live
+ * document when omitted.
  * @module @deepseek-ai/dsh-tool-wordinweb
  */
 
@@ -15,16 +17,41 @@ import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import type { ContentBlock, ToolSchema } from '@deepseek-ai/dsh-llm'
 import type { ToolDefinition, ToolRunContext } from '@deepseek-ai/dsh-tools'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import type {} from '@deepseek-ai/dsh-session'
 import { AgentDocument } from '@wordinweb/agent'
 import type { AgentDocument as AgentDocumentType, AgentTool } from '@wordinweb/agent'
 
 type CapabilityCategory = Parameters<AgentDocumentType['capabilities']>[0]
 type CapabilityKind = Parameters<AgentDocumentType['capabilities']>[1]
 
-/** Live document state owned by one plugin instance. */
+/** Live document state owned by one agent's tool calls. */
 interface DocumentState {
   doc: AgentDocumentType | null
   lastProjectionRevision: string | undefined
+}
+
+/**
+ * Document states keyed by the agent whose executions carry it: concurrent
+ * sessions never observe one another's document. Agent-less executions (direct
+ * registry calls, tests) share one fallback state; a disposed session's entry
+ * is dropped with its session.
+ */
+interface DocumentStore {
+  readonly shared: DocumentState
+  readonly byAgent: Map<SessionId, DocumentState>
+}
+
+/** The state one execution addresses: its agent's, or the shared fallback. */
+function stateFor(store: DocumentStore, exec: ToolRunContext | undefined): DocumentState {
+  const id = exec?.agent?.id
+  if (id === undefined) return store.shared
+  let state = store.byAgent.get(id)
+  if (state === undefined) {
+    state = { doc: null, lastProjectionRevision: undefined }
+    store.byAgent.set(id, state)
+  }
+  return state
 }
 
 /** Resolved plugin configuration. */
@@ -103,8 +130,15 @@ const jsonOutput = {
   },
 }
 
-/** Dispatch one tool call against the plugin's live document state. */
-async function dispatch(state: DocumentState, config: ResolvedConfig, name: string, input: Record<string, unknown>): Promise<unknown> {
+/** Dispatch one tool call against the calling agent's live document state. */
+async function dispatch(
+  store: DocumentStore,
+  config: ResolvedConfig,
+  name: string,
+  input: Record<string, unknown>,
+  exec: ToolRunContext | undefined,
+): Promise<unknown> {
+  const state = stateFor(store, exec)
   switch (name) {
     case 'word_document_new':
       state.doc = AgentDocument.create()
@@ -135,6 +169,28 @@ async function dispatch(state: DocumentState, config: ResolvedConfig, name: stri
         bytes: bytes.length,
         revision: doc.revision,
         ...config.editorUrl === undefined ? {} : { editorUrl: `${config.editorUrl.replace(/\/$/, '')}/?file=${encodeURIComponent(saved)}` },
+      }
+    }
+
+    case 'word_document_add_image': {
+      const doc = requireDoc(state)
+      if (typeof input.path !== 'string' || input.path.trim() === '') {
+        throw new Error('word_document_add_image requires a non-empty string `path`.')
+      }
+      const file = resolvePath(config, input.path)
+      const mediaType = typeof input.mediaType === 'string' && input.mediaType.trim() !== ''
+        ? input.mediaType
+        : imageMediaTypeOf(file)
+      if (mediaType === undefined) throw new Error('word_document_add_image requires a .png or .jpg path, or an explicit mediaType.')
+      const bytes = await readFile(file)
+      const assetRef = doc.addAsset(bytes, mediaType)
+      const size = imageDimensionsOf(bytes)
+      return {
+        assetRef,
+        bytes: bytes.length,
+        mediaType,
+        ...size === undefined ? {} : { naturalWidthPx: size.widthPx, naturalHeightPx: size.heightPx },
+        hint: 'Reference assetRef in a compose image block or an insertImage edit; scale widthPx/heightPx keeping the natural aspect ratio.',
       }
     }
 
@@ -187,14 +243,14 @@ async function dispatch(state: DocumentState, config: ResolvedConfig, name: stri
 }
 
 /** One raw ToolRuntime definition wrapping a package tool. */
-function packageToolDefinition(state: DocumentState, config: ResolvedConfig, tool: AgentTool): ToolDefinition {
+function packageToolDefinition(store: DocumentStore, config: ResolvedConfig, tool: AgentTool): ToolDefinition {
   return {
     name: tool.name,
     description: tool.description,
     parameters: stripRevisionRequired(tool.inputSchema),
     output: jsonOutput,
-    async execute(args: unknown, _exec: ToolRunContext): Promise<unknown> {
-      return pruneUndefined(await dispatch(state, config, tool.name, asRecord(args)))
+    async execute(args: unknown, exec: ToolRunContext): Promise<unknown> {
+      return pruneUndefined(await dispatch(store, config, tool.name, asRecord(args), exec))
     },
   }
 }
@@ -216,16 +272,64 @@ const SAVE_PARAMETERS: ToolSchema['parameters'] = {
   additionalProperties: false,
 }
 
+const ADD_IMAGE_PARAMETERS: ToolSchema['parameters'] = {
+  type: 'object',
+  properties: {
+    path: { type: 'string', description: 'Image file path (.png or .jpg). Relative paths resolve against the configured workspace.' },
+    mediaType: { type: 'string', description: 'Override the extension-derived media type, e.g. image/png.' },
+  },
+  required: ['path'],
+  additionalProperties: false,
+}
+
+/** Media type of one image path by extension, `undefined` for unknown suffixes. */
+function imageMediaTypeOf(path: string): string | undefined {
+  const lowered = path.toLowerCase()
+  if (lowered.endsWith('.png')) return 'image/png'
+  if (lowered.endsWith('.jpg') || lowered.endsWith('.jpeg')) return 'image/jpeg'
+  return undefined
+}
+
+/**
+ * Natural pixel dimensions of one PNG or JPEG image, so image blocks can keep
+ * their aspect ratio; `undefined` when the bytes are not a decodable header.
+ * @param bytes - image bytes as stored on disk.
+ * @returns width and height in pixels, or undefined for an unrecognized format.
+ */
+function imageDimensionsOf(bytes: Uint8Array): { widthPx: number; heightPx: number } | undefined {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+  if (bytes.length >= 24 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) {
+    return { widthPx: view.getUint32(16), heightPx: view.getUint32(20) }
+  }
+  if (bytes.length >= 4 && bytes[0] === 0xff && bytes[1] === 0xd8) {
+    let offset = 2
+    while (offset + 9 < bytes.length) {
+      if (bytes[offset] !== 0xff) { offset += 1; continue }
+      const marker = bytes[offset + 1]
+      if (marker === undefined) break
+      const length = view.getUint16(offset + 2)
+      // SOF0..SOF3, SOF5..SOF7, SOF9..SOF11, SOF13..SOF15 carry the frame size.
+      if ((marker >= 0xc0 && marker <= 0xc3) || (marker >= 0xc5 && marker <= 0xc7)
+        || (marker >= 0xc9 && marker <= 0xcb) || (marker >= 0xcd && marker <= 0xcf)) {
+        return { heightPx: view.getUint16(offset + 5), widthPx: view.getUint16(offset + 7) }
+      }
+      if (marker === 0xd8 || marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)) { offset += 2; continue }
+      offset += 2 + length
+    }
+  }
+  return undefined
+}
+
 /** All tool definitions owned by this plugin. */
-function toolDefinitions(state: DocumentState, config: ResolvedConfig): ToolDefinition[] {
+function toolDefinitions(store: DocumentStore, config: ResolvedConfig): ToolDefinition[] {
   const definitions: ToolDefinition[] = [
     {
       name: 'word_document_new',
       description: 'Start a blank DOCX. Required before word_document_compose (compose only works on a fresh blank document).',
       parameters: { type: 'object', properties: {}, additionalProperties: false },
       output: jsonOutput,
-      async execute(): Promise<unknown> {
-        return pruneUndefined(await dispatch(state, config, 'word_document_new', {}))
+      async execute(_args: unknown, exec: ToolRunContext): Promise<unknown> {
+        return pruneUndefined(await dispatch(store, config, 'word_document_new', {}, exec))
       },
     },
     {
@@ -233,8 +337,8 @@ function toolDefinitions(state: DocumentState, config: ResolvedConfig): ToolDefi
       description: 'Load an existing .docx from disk and replace the current document. Returns the document overview.',
       parameters: OPEN_PARAMETERS,
       output: jsonOutput,
-      async execute(args: unknown): Promise<unknown> {
-        return pruneUndefined(await dispatch(state, config, 'word_document_open', asRecord(args)))
+      async execute(args: unknown, exec: ToolRunContext): Promise<unknown> {
+        return pruneUndefined(await dispatch(store, config, 'word_document_open', asRecord(args), exec))
       },
     },
     {
@@ -243,14 +347,23 @@ function toolDefinitions(state: DocumentState, config: ResolvedConfig): ToolDefi
         + (config.editorUrl === undefined ? '.' : ' plus an editorUrl the user can open.'),
       parameters: SAVE_PARAMETERS,
       output: jsonOutput,
-      async execute(args: unknown): Promise<unknown> {
-        return pruneUndefined(await dispatch(state, config, 'word_document_save', asRecord(args)))
+      async execute(args: unknown, exec: ToolRunContext): Promise<unknown> {
+        return pruneUndefined(await dispatch(store, config, 'word_document_save', asRecord(args), exec))
+      },
+    },
+    {
+      name: 'word_document_add_image',
+      description: 'Register one on-disk image (.png/.jpg) as a document asset and return its assetRef with natural dimensions, for image blocks in word_document_compose and insertImage edits.',
+      parameters: ADD_IMAGE_PARAMETERS,
+      output: jsonOutput,
+      async execute(args: unknown, exec: ToolRunContext): Promise<unknown> {
+        return pruneUndefined(await dispatch(store, config, 'word_document_add_image', asRecord(args), exec))
       },
     },
   ]
   for (const tool of AgentDocument.create().tools()) {
     if (PACKAGE_TOOLS_REPLACED.has(tool.name)) continue
-    definitions.push(packageToolDefinition(state, config, tool))
+    definitions.push(packageToolDefinition(store, config, tool))
   }
   return definitions
 }
@@ -280,8 +393,12 @@ export function apply(ctx: Context, config: Config): void {
       ? undefined
       : config.editorUrl,
   }
-  const state: DocumentState = { doc: null, lastProjectionRevision: undefined }
-  for (const definition of toolDefinitions(state, resolved)) ctx.tools.register(definition)
+  const store: DocumentStore = {
+    shared: { doc: null, lastProjectionRevision: undefined },
+    byAgent: new Map(),
+  }
+  for (const definition of toolDefinitions(store, resolved)) ctx.tools.register(definition)
+  ctx.on('session/disposed', (session) => { store.byAgent.delete(session.id) })
 }
 
 /** Names of every registered `word_document_*` tool, so tests and hosts name tool calls without string literals. */
@@ -289,6 +406,7 @@ export const WORD_DOCUMENT_TOOL_NAMES = [
   'word_document_new',
   'word_document_open',
   'word_document_save',
+  'word_document_add_image',
   'word_document_compose',
   'word_document_capabilities',
   'word_document_inspect',

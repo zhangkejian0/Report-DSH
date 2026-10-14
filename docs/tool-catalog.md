@@ -47,7 +47,7 @@ This table connects model-visible tool names to the plugin package and service s
 | `@deepseek-ai/dsh-tool-workflow` | `workflow` | `ctx.tools`, `ctx.workflowEngine`, `ctx.systemPrompt`, `a calling Agent (exec.agent parents the script children)` | `tool/call`, `tool/result` | - | - |
 | `@deepseek-ai/dsh-tool-workspace-dependencies` | `load_workspace_dependencies` | `ctx.tools` | `tool/call`, `tool/result` | - | - |
 | `@deepseek-ai/dsh-tool-web` | `web_fetch`, `web_search` | `ctx.tools`, `ctx.web`, `ctx.systemPrompt` | `tool/call`, `tool/result` | - | web_search and web_fetch keep provider selection behind ctx.web so model-visible schemas stay stable across backend swaps. |
-| `@deepseek-ai/dsh-tool-wordinweb` | `word_document_asset`, `word_document_capabilities`, `word_document_compose`, `word_document_edit`, `word_document_inspect`, `word_document_new`, `word_document_open`, `word_document_patch`, `word_document_project`, `word_document_save` | `ctx.tools` | `tool/call`, `tool/result` | - | - |
+| `@deepseek-ai/dsh-tool-wordinweb` | `word_document_add_image`, `word_document_asset`, `word_document_capabilities`, `word_document_compose`, `word_document_edit`, `word_document_inspect`, `word_document_new`, `word_document_open`, `word_document_patch`, `word_document_project`, `word_document_save` | `ctx.tools` | `tool/call`, `tool/result` | - | - |
 
 <a id="deepseek-aidsh-plugin-manager"></a>
 
@@ -2776,6 +2776,32 @@ web_search and web_fetch keep provider selection behind ctx.web so model-visible
 <a id="deepseek-aidsh-tool-wordinweb"></a>
 
 ## `@deepseek-ai/dsh-tool-wordinweb`
+
+### `word_document_add_image`
+
+Register one on-disk image (.png/.jpg) as a document asset and return its assetRef with natural dimensions, for image blocks in word_document_compose and insertImage edits.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "path": {
+      "type": "string",
+      "description": "Image file path (.png or .jpg). Relative paths resolve against the configured workspace."
+    },
+    "mediaType": {
+      "type": "string",
+      "description": "Override the extension-derived media type, e.g. image/png."
+    }
+  },
+  "required": [
+    "path"
+  ],
+  "additionalProperties": false
+}
+```
+
+Source: [`packages/document/tool-wordinweb/src/index.ts`](../packages/document/tool-wordinweb/src/index.ts)
 
 ### `word_document_asset`
 

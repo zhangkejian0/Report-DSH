@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-将 MIT 许可的 [`@wordinweb/agent`](https://www.npmjs.com/package/@wordinweb/agent) 包提供的可移植 `word_document_*` 工具集注册到 Harness ToolRuntime：schema 化的 DOCX 组装、渐进式检查、事务化编辑、文本投影与补丁、能力 schema 与资源读取，另有三个文件系统工具——`word_document_new`、`word_document_open`、`word_document_save`。每个插件实例持有一份 `AgentDocument`；省略的 `revision` 字段由活动文档自动填充。全部在进程内完成，不依赖浏览器。
+将 MIT 许可的 [`@wordinweb/agent`](https://www.npmjs.com/package/@wordinweb/agent) 包提供的可移植 `word_document_*` 工具集注册到 Harness ToolRuntime：schema 化的 DOCX 组装、渐进式检查、事务化编辑、文本投影与补丁、能力 schema 与资源读取，另有四个文件系统工具——`word_document_new`、`word_document_open`、`word_document_save`、`word_document_add_image`。每个 agent（会话）持有一份独立的 `AgentDocument`，并发会话互不串扰；省略的 `revision` 字段由调用 agent 的活动文档自动填充。全部在进程内完成，不依赖浏览器。
 
 ## 目录
 
@@ -41,6 +41,7 @@ Base 组合包以 `tool-wordinweb` 挂载本插件。独立组合以 `cordis.yml
 | `word_document_new` | 新建空白 DOCX（compose 前必须调用）。 |
 | `word_document_open` | 从磁盘加载 `.docx`；返回 overview。 |
 | `word_document_compose` | 用 schema 化的块组装完整新文档。 |
+| `word_document_add_image` | 将磁盘图片（.png/.jpg）注册为文档资产；返回 `assetRef` 与原始像素尺寸，供 compose 的 image 块与 insertImage 编辑引用。 |
 | `word_document_capabilities` | 按类别或 kind 列出操作 schema。 |
 | `word_document_inspect` | overview、有界 context、读取窗口、搜索、对象详情、页面几何。 |
 | `word_document_edit` | 对观察到的 revision 应用已校验的事务。 |
@@ -56,7 +57,7 @@ Base 组合包以 `tool-wordinweb` 挂载本插件。独立组合以 `cordis.yml
 
 #### 模型看到的内容
 
-插件挂载期间的十个 `word_document_*` 工具 schema。八个包工具原样携带自身描述与 JSON Schema（仅从 `required` 移除 `revision`）；三个文件系统工具声明上表所示的小型对象 schema。
+插件挂载期间的十一个 `word_document_*` 工具 schema。七个包工具原样携带自身描述与 JSON Schema（仅从 `required` 移除 `revision`）；四个文件系统工具声明上表所示的小型对象 schema。
 
 #### Token 影响
 
@@ -70,7 +71,7 @@ Base 组合包以 `tool-wordinweb` 挂载本插件。独立组合以 `cordis.yml
 
 <a id="known-limitations-and-deferred-work"></a>
 
-- **每插件实例一份文档** —— 桥持有单个 `AgentDocument`；一个 Host 中的并发 agent 共享它。按 agent 作用域化（`agent.ctx` 插件实例）推迟到报告产品需要多会话并发时。
+- **文档按 agent 作用域化** —— 每个 agent（会话）的调用解析到自己的 `AgentDocument`；不带 agent 的执行（直连注册表、测试）共享一份回退文档。会话处置时其条目随之移除。
 - **未接入文件系统 seam** —— open/save 通过 `node:fs` 读写而非 `ctx.fs`，沙箱与观察策略不作用于 `.docx` 路径；迁移到 fs seam 已推迟。
 - **参数不做子集校验** —— 原始工具参数原样透传给模型提供方；包内 `$defs`/`$ref` 用法经测试提供方接受，如有提供方拒绝可增加清洗投影。
 

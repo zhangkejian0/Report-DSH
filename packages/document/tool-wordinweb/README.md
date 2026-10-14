@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-Register the portable `word_document_*` tool set from the MIT-licensed [`@wordinweb/agent`](https://www.npmjs.com/package/@wordinweb/agent) package on the Harness ToolRuntime: schema-enforced DOCX composition, progressive inspection, transactional edits, text projection and patching, capability schemas, and asset reads, plus three filesystem conveniences — `word_document_new`, `word_document_open`, and `word_document_save`. One `AgentDocument` is held per plugin instance; omitted `revision` fields are injected from the live document. Everything runs in-process with no browser dependency.
+Register the portable `word_document_*` tool set from the MIT-licensed [`@wordinweb/agent`](https://www.npmjs.com/package/@wordinweb/agent) package on the Harness ToolRuntime: schema-enforced DOCX composition, progressive inspection, transactional edits, text projection and patching, capability schemas, and asset reads, plus four filesystem conveniences — `word_document_new`, `word_document_open`, `word_document_save`, and `word_document_add_image`. Every agent (session) holds its own `AgentDocument`, so concurrent sessions edit independent documents; omitted `revision` fields are injected from the calling agent's live document. Everything runs in-process with no browser dependency.
 
 ## Table of Contents
 
@@ -41,6 +41,7 @@ The plugin harvests names, descriptions, and JSON Schemas from `AgentDocument.cr
 | `word_document_new` | Start a blank DOCX (required before compose). |
 | `word_document_open` | Load a `.docx` from disk; returns the overview. |
 | `word_document_compose` | Assemble a complete new document from schema-enforced blocks. |
+| `word_document_add_image` | Register an on-disk image (.png/.jpg) as a document asset; returns the `assetRef` with natural pixel dimensions for compose image blocks and insertImage edits. |
 | `word_document_capabilities` | List operation schemas by category or kind. |
 | `word_document_inspect` | Overview, bounded context, read windows, search, object detail, page geometry. |
 | `word_document_edit` | Apply a validated transaction against an observed revision. |
@@ -56,7 +57,7 @@ The plugin harvests names, descriptions, and JSON Schemas from `AgentDocument.cr
 
 #### What the model sees
 
-The ten `word_document_*` tool schemas while the plugin is mounted. The eight package tools ship their own descriptions and JSON Schemas verbatim (with `revision` removed from `required`); the three filesystem tools declare small object schemas shown in the table above.
+The eleven `word_document_*` tool schemas while the plugin is mounted. The seven package tools ship their own descriptions and JSON Schemas verbatim (with `revision` removed from `required`); the four filesystem tools declare small object schemas shown in the table above.
 
 #### Token effect
 
@@ -70,7 +71,7 @@ Append-only for a stable composition: schemas join the prompt prefix when the pl
 
 <a id="known-limitations-and-deferred-work"></a>
 
-- **One document per plugin instance** — the bridge holds a single `AgentDocument`; concurrent agents in one Host share it. Per-agent scoping would use `agent.ctx` plugin instances, deferred until the report product needs multi-session concurrency.
+- **Documents are scoped per agent** — every agent's (session's) calls resolve to its own `AgentDocument`; agent-less executions (direct registry calls, tests) share one fallback document. A disposed session's entry is dropped with its session.
 - **No filesystem seam integration** — open/save read and write through `node:fs` rather than `ctx.fs`, so sandbox and observation policy do not apply to `.docx` paths; migrating to the fs seam is deferred.
 - **Parameters are not subset-validated** — raw tool parameters pass through to the model provider verbatim; the package's `$defs`/`$ref` usage is accepted by the tested providers, and a sanitizing projection can be added if a provider rejects it.
 
