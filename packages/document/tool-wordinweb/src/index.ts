@@ -117,7 +117,7 @@ async function dispatch(state: DocumentState, config: ResolvedConfig, name: stri
       }
       const file = resolvePath(config, input.path)
       const bytes = await readFile(file)
-      state.doc = AgentDocument.load(bytes, { provenance: { author: 'dsh-tool-wordinweb' } })
+      state.doc = AgentDocument.load(bytes)
       state.lastProjectionRevision = undefined
       return state.doc.inspect({ kind: 'overview' })
     }
@@ -284,7 +284,7 @@ export function apply(ctx: Context, config: Config): void {
   for (const definition of toolDefinitions(state, resolved)) ctx.tools.register(definition)
 }
 
-// Re-exported so tests and hosts can name tool calls without string literals.
+/** Names of every registered `word_document_*` tool, so tests and hosts name tool calls without string literals. */
 export const WORD_DOCUMENT_TOOL_NAMES = [
   'word_document_new',
   'word_document_open',

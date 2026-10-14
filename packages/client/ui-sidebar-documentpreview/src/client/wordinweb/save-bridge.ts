@@ -20,6 +20,9 @@ export type ReadFile =
 export type StatFile =
   (sessionId: SessionId, path: string, signal: AbortSignal) => Promise<string>
 
+/** Move the main view onto one Session. */
+export type NavigateSession = (sessionId: SessionId) => void
+
 /**
  * The Remote closures: set by the plugin while the connection is up, cleared
  * on dispose. Components read them because the slot system offers no
@@ -31,10 +34,12 @@ export const bridge: {
   create: CreateSession | undefined
   stat: StatFile | undefined
   read: ReadFile | undefined
+  navigate: NavigateSession | undefined
 } = {
   save: undefined,
   prompt: undefined,
   create: undefined,
   stat: undefined,
   read: undefined,
+  navigate: undefined,
 }

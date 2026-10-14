@@ -5,33 +5,36 @@ kind: "package-reference"
 
 # @deepseek-ai/dsh-tool-wordinweb
 
-中文 | [English](README.md)
+[English](README.md) | 中文
 
-## 摘要
+## 概述
 
-将 MIT 许可的 [`@wordinweb/agent`](https://www.npmjs.com/package/@wordinweb/agent) 包提供的可移植
-`word_document_*` 工具集注册到 Harness ToolRuntime：schema 化的 DOCX 组装、渐进式检查、事务化编辑、
-文本投影与补丁、能力 schema 与资源读取，另有三个文件系统工具——`word_document_new`、
-`word_document_open`、`word_document_save`。每个插件实例持有一份 `AgentDocument`；省略的
-`revision` 字段由活动文档自动填充。全部在进程内完成，不依赖浏览器。
+将 MIT 许可的 [`@wordinweb/agent`](https://www.npmjs.com/package/@wordinweb/agent) 包提供的可移植 `word_document_*` 工具集注册到 Harness ToolRuntime：schema 化的 DOCX 组装、渐进式检查、事务化编辑、文本投影与补丁、能力 schema 与资源读取，另有三个文件系统工具——`word_document_new`、`word_document_open`、`word_document_save`。每个插件实例持有一份 `AgentDocument`；省略的 `revision` 字段由活动文档自动填充。全部在进程内完成，不依赖浏览器。
 
+## 目录
+
+- [使用此包](#use-this-package)
+- [了解实现](#understand-the-implementation)
+- [模型体验](#model-experience)
+- [已知限制与延后工作](#known-limitations-and-deferred-work)
+- [开发备注](#dev-note)
+
+-----
+
+<a id="use-this-package"></a>
 ## 使用本包
 
-Base 组合包以 `tool-wordinweb` 挂载本插件。独立组合以 `cordis.yml` 行挂载
-`@deepseek-ai/dsh-tool-wordinweb`。
+Base 组合包以 `tool-wordinweb` 挂载本插件。独立组合以 `cordis.yml` 行挂载 `@deepseek-ai/dsh-tool-wordinweb`。
 
 | 字段 | 默认 | 含义 |
 | --- | --- | --- |
 | `workspace` | 宿主进程工作目录 | 相对 `.docx` 路径的解析基准目录。 |
 | `editorUrl` | — | 保存结果中附带 `editorUrl` 的 Word 编辑器基础 URL，如 `http://127.0.0.1:5180`。 |
 
+<a id="understand-the-implementation"></a>
 ## 了解实现
 
-插件在注册时从 `AgentDocument.create().tools()` 采集名称、描述与 JSON Schema，注册的 schema
-因此不会偏离包契约。包自带的 `word_document_save`（返回文档字节）被写文件的实现替换：在配置的
-workspace 下写出 `.docx` 并返回绝对路径。各 schema 的 `required` 中移除了 `revision` 并在分发时
-自动填充：edit 与 patch 优先用调用方提供的 revision，其次上次投影的 revision，最后活动文档的
-revision。过期 revision 由包自身的校验以工具错误形式暴露。
+插件在注册时从 `AgentDocument.create().tools()` 采集名称、描述与 JSON Schema，注册的 schema 因此不会偏离包契约。包自带的 `word_document_save`（返回文档字节）被写文件的实现替换：在配置的 workspace 下写出 `.docx` 并返回绝对路径。各 schema 的 `required` 中移除了 `revision` 并在分发时自动填充：edit 与 patch 优先用调用方提供的 revision，其次上次投影的 revision，最后活动文档的 revision。过期 revision 由包自身的校验以工具错误形式暴露。
 
 | 工具 | 职责 |
 | --- | --- |
@@ -46,27 +49,36 @@ revision。过期 revision 由包自身的校验以工具错误形式暴露。
 | `word_document_asset` | 以 base64 读取图片或内嵌资源。 |
 | `word_document_save` | 将当前文档写入磁盘；返回路径、大小、revision 与可选 `editorUrl`。 |
 
-## Model Experience
+<a id="model-experience"></a>
+## 模型体验
 
-### Request context and condition
+### 请求上下文与条件
 
-#### What the model sees
+#### 模型看到的内容
 
-插件挂载期间的十个 `word_document_*` 工具 schema。八个包工具原样携带自身描述与 JSON Schema
-（仅从 `required` 移除 `revision`）；三个文件系统工具声明上表所示的小型对象 schema。
+插件挂载期间的十个 `word_document_*` 工具 schema。八个包工具原样携带自身描述与 JSON Schema（仅从 `required` 移除 `revision`）；三个文件系统工具声明上表所示的小型对象 schema。
 
-#### Token effect
+#### Token 影响
 
-条件性：仅当插件在活动组合中挂载时，各工具的固定 schema 加入提示词组装。检查结果受包自身的
-预算约束（默认 `context` 预算为 100 块、24,000 字符）。
+条件性：仅当插件在活动组合中挂载时，各工具的固定 schema 加入提示词组装。检查结果受包自身的预算约束（默认 `context` 预算为 100 块、24,000 字符）。
 
-#### KV Cache effect
+#### KV Cache 影响
 
-对稳定组合为追加式：schema 在插件挂载时加入提示词前缀，卸载时离开并使复用失效。工具结果是
-普通的逐轮消息内容，不使前缀失效。
+对稳定组合为追加式：schema 在插件挂载时加入提示词前缀，卸载时离开并使复用失效。工具结果是普通的逐轮消息内容，不使前缀失效。
 
-## Known Limitations and Deferred Work
+## 已知限制与延后工作
+
+<a id="known-limitations-and-deferred-work"></a>
 
 - **每插件实例一份文档** —— 桥持有单个 `AgentDocument`；一个 Host 中的并发 agent 共享它。按 agent 作用域化（`agent.ctx` 插件实例）推迟到报告产品需要多会话并发时。
 - **未接入文件系统 seam** —— open/save 通过 `node:fs` 读写而非 `ctx.fs`，沙箱与观察策略不作用于 `.docx` 路径；迁移到 fs seam 已推迟。
 - **参数不做子集校验** —— 原始工具参数原样透传给模型提供方；包内 `$defs`/`$ref` 用法经测试提供方接受，如有提供方拒绝可增加清洗投影。
+
+<a id="dev-note"></a>
+### 开发备注
+
+<details>
+<summary>维护者的工作上下文 —— 点击展开</summary>
+
+无。
+</details>

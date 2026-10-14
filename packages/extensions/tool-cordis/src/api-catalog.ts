@@ -3229,6 +3229,20 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'thermalAnalyze',
+    summary: 'A provider lifetime owning the configured analyzer and its in-flight calls.',
+    description: 'A provider lifetime owning the configured analyzer and its in-flight calls.',
+    methods: [
+      {
+        signature: '@Remote async analyze(workspaceFileScope: WorkspaceFileScope, path: string, signal: AbortSignal): Promise<ThermalAnalysis>',
+        description: 'Analyze one radiometric JPEG using the Session\'s ordinary filesystem authorization.',
+        parameters: [{ name: 'workspaceFileScope', description: 'Session header lookup shared with workspaceFiles.' }, { name: 'path', description: 'absolute or workspace-relative path to the image.' }, { name: 'signal', description: 'Remote cancellation; provider disposal also stops active work.' }],
+        returns: 'the analyzer\'s complete report, temperatures in Celsius.',
+        throws: ['{RemoteError} `thermal-analyze/failed` with a `reason` detail on every failure.'],
+      },
+    ],
+  },
+  {
     key: 'timer',
     summary: 'Disposable timer helpers mixed into Cordis contexts.',
     description: 'Disposable timer helpers mixed into Cordis contexts.',
@@ -3775,6 +3789,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Report one regular file\'s identity, version, and size without its content.',
         parameters: [{ name: 'workspaceFileScope', description: 'header-derived workspace root for the Session identity on the wire.' }, { name: 'path', description: 'absolute path or path relative to the workspace root; files outside it are allowed.' }, { name: 'signal', description: 'caller cancellation.' }],
         returns: 'the file\'s absolute path, current version, and byte size.',
+      },
+      {
+        signature: '@Remote async writeBytes( workspaceFileScope: WorkspaceFileScope, path: string, base64: string, signal: AbortSignal, ): Promise<WorkspaceFileStat>',
+        description: 'Write complete bytes to one workspace file (fork extension for the WordInWeb sidebar editor). Authorization and resolution reuse the read path; the bytes then land on the resolved host path directly, because the composed filesystem seam exposes no binary write.',
+        parameters: [{ name: 'workspaceFileScope', description: 'header-derived workspace root for the Session identity on the wire.' }, { name: 'path', description: 'absolute path or path relative to the workspace root.' }, { name: 'base64', description: 'complete file bytes, base64-encoded for JSON wire safety.' }, { name: 'signal', description: 'caller cancellation.' }],
+        returns: 'the file\'s refreshed absolute path, version, and byte size.',
       },
       {
         signature: '@Remote async list(workspaceFileScope: WorkspaceFileScope, path: string, signal: AbortSignal): Promise<WorkspaceDirectoryListing>',
@@ -7864,6 +7884,46 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'TextProps',
     declaration: 'export interface TextProps {\n    readonly color?: string | undefined;\n    readonly bold?: boolean | undefined;\n    readonly dimColor?: boolean | undefined;\n    readonly italic?: boolean | undefined;\n    readonly underline?: boolean | undefined;\n    readonly children?: UiNode | undefined;\n}',
+  },
+  {
+    name: 'ThermalAnalysis',
+    declaration: 'export interface ThermalAnalysis {\n    readonly file: {\n        readonly path: string;\n        readonly type: string;\n        readonly version: number;\n        readonly modifiedTime: string;\n        readonly width: number;\n        readonly height: number;\n    };\n    readonly camera: ThermalCamera;\n    readonly lens: ThermalLens;\n    readonly params: ThermalParams;\n    readonly gain: ThermalGain;\n    readonly stats: ThermalStats;\n    readonly markers: readonly ThermalMarker[];\n    readonly grid: ThermalGrid;\n    readonly frame: ThermalFrame;\n    readonly images: ThermalImages;\n}',
+  },
+  {
+    name: 'ThermalCamera',
+    declaration: 'export interface ThermalCamera {\n    readonly model: string;\n    readonly serialNo: string;\n    readonly brand: string;\n    readonly company: string;\n}',
+  },
+  {
+    name: 'ThermalFrame',
+    declaration: 'export interface ThermalFrame {\n    readonly timestamp: string;\n    readonly adMin: number;\n    readonly adMax: number;\n    readonly adAvg: number;\n}',
+  },
+  {
+    name: 'ThermalGain',
+    declaration: 'export interface ThermalGain {\n    readonly mode: string;\n    readonly min: number;\n    readonly max: number;\n}',
+  },
+  {
+    name: 'ThermalGrid',
+    declaration: 'export interface ThermalGrid {\n    readonly width: number;\n    readonly height: number;\n    readonly block: number;\n    readonly data: readonly number[];\n}',
+  },
+  {
+    name: 'ThermalImages',
+    declaration: 'export interface ThermalImages {\n    readonly thermal: string;\n    readonly palette: string;\n}',
+  },
+  {
+    name: 'ThermalLens',
+    declaration: 'export interface ThermalLens {\n    readonly focalLength: number;\n    readonly hFov: number;\n}',
+  },
+  {
+    name: 'ThermalMarker',
+    declaration: 'export interface ThermalMarker {\n    readonly name: string;\n    readonly type: string;\n    readonly rect: readonly [\n        number,\n        number,\n        number,\n        number\n    ];\n    readonly max: number;\n    readonly min: number;\n    readonly avg: number;\n    readonly hotSpot: readonly [\n        number,\n        number\n    ];\n    readonly coldSpot: readonly [\n        number,\n        number\n    ];\n}',
+  },
+  {
+    name: 'ThermalParams',
+    declaration: 'export interface ThermalParams {\n    readonly emissivity: number;\n    readonly distance: number;\n    readonly reflTemp: number;\n    readonly atmTemp: number;\n    readonly relHumidity: number;\n}',
+  },
+  {
+    name: 'ThermalStats',
+    declaration: 'export interface ThermalStats {\n    readonly min: number;\n    readonly max: number;\n    readonly avg: number;\n    readonly minAt: readonly [\n        number,\n        number\n    ];\n    readonly maxAt: readonly [\n        number,\n        number\n    ];\n    readonly count: number;\n}',
   },
   {
     name: 'TimedUserQuestionResult',

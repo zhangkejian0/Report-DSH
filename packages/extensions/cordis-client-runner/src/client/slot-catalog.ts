@@ -1584,6 +1584,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     occupants: [
       'client-ui-open-in-app SessionOpenInAppAction id \'open-in-app\'',
       'client-ui-schedule ScheduleCatalogAction id \'schedule-catalog\'',
+      'client-ui-sidebar-documentpreview WordinwebEditSessionSeed id \'wordinweb-edit-session\'',
       'session-log-export SessionLogDownloadHeaderAction id \'session-log-download\'',
     ],
     replaceRisk: 'none',
@@ -3296,6 +3297,8 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
       'client-ui-schedule ScheduleTaskTab',
       'client-ui-sidebar-browser BrowserBody',
       'client-ui-sidebar-documentpreview TextPreview',
+      'client-ui-sidebar-documentpreview ThermalAnalysisTab',
+      'client-ui-sidebar-documentpreview WordinwebEditTab',
       'client-ui-sidebar-files FilesBody',
       'client-ui-sidebar-right GuideBody',
       'client-ui-sidebar-terminal LazyTerminalBody',
@@ -3406,6 +3409,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
       'client-ui-sidebar-documentpreview OfficeBody',
       'client-ui-sidebar-documentpreview LazyPdfBody',
       'client-ui-sidebar-documentpreview TextBody',
+      'client-ui-sidebar-documentpreview WordinwebBody',
     ],
     replaceRisk: 'none',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'sidebar.right.tab.document\', () => ctx.slots.register(\n      { name: \'sidebar.right.tab.document\', key: \'<one key the owner dispatches>\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',
@@ -3454,6 +3458,8 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     declaredBy: 'an entry in \'sidebar.right.pane.tab\' (client-ui-sidebar-documentpreview), so it exists while that entry is mounted',
     occupants: [
       'client-ui-sidebar-documentpreview OfficeFontAction',
+      'client-ui-sidebar-documentpreview ThermalAction',
+      'client-ui-sidebar-documentpreview WordinwebAction',
     ],
     replaceRisk: 'none',
     example: 'return {\n  inject: [\'slots\'],\n  apply(ctx) {\n    ctx.slots.inject(\'sidebar.right.tab.document.action\', () => ctx.slots.register(\n      { name: \'sidebar.right.tab.document.action\', key: \'<one key the owner dispatches>\' },\n      () => React.createElement(\'div\', null, \'hello\'),\n    ))\n  },\n}',

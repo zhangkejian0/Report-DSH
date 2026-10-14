@@ -9,8 +9,8 @@
   en: 6cc2cd9ced70bb09
   zh: 1c0e6cb4ba2ed637
 /tool-schema-catalog/tool-package-map:
-  en: e18a3e3c916afb23
-  zh: 4284b50a5e9bd12f
+  en: 825b47dff65e2a4e
+  zh: 35fd5f8a7ba71c25
 /tool-schema-catalog/deepseek-ai-dsh-plugin-manager:
   en: e0143916bb634762
   zh: e0143916bb634762
@@ -321,5 +321,38 @@
   en: 8673f203aea9bdf2
   zh: 4e17783ffdf34c83
 /tool-schema-catalog/deepseek-ai-dsh-tool-web/web-search:
-  en: cc1ad38bf0006710
-  zh: 324eacb827a09e93
+  en: 1555b12dd7a78af1
+  zh: 54b6b968cd9238ec
+/tool-schema-catalog/deepseek-ai-dsh-tool-wordinweb:
+  en: 38f18808629cb7e9
+  zh: 38f18808629cb7e9
+/tool-schema-catalog/deepseek-ai-dsh-tool-wordinweb/word-document-asset:
+  en: e08ce70990cc0b17
+  zh: 3a105f9bf7449c19
+/tool-schema-catalog/deepseek-ai-dsh-tool-wordinweb/word-document-capabilities:
+  en: 5b65d84298f17d53
+  zh: 9b92ea07aa2e4aaf
+/tool-schema-catalog/deepseek-ai-dsh-tool-wordinweb/word-document-compose:
+  en: d662af38e9deefa4
+  zh: 8af307ca9778a2d2
+/tool-schema-catalog/deepseek-ai-dsh-tool-wordinweb/word-document-edit:
+  en: 2235c9bf59524149
+  zh: ebe2300fe6a6bea7
+/tool-schema-catalog/deepseek-ai-dsh-tool-wordinweb/word-document-inspect:
+  en: 36f952a47756cc9c
+  zh: 395212957c10e3e4
+/tool-schema-catalog/deepseek-ai-dsh-tool-wordinweb/word-document-new:
+  en: 9334505540888d7b
+  zh: 5efc0bc34fe76285
+/tool-schema-catalog/deepseek-ai-dsh-tool-wordinweb/word-document-open:
+  en: 53c0e0a9e2cc6f3c
+  zh: 04c39806dc1c931a
+/tool-schema-catalog/deepseek-ai-dsh-tool-wordinweb/word-document-patch:
+  en: 6a1e2304ff8acfd7
+  zh: 016f7663c8d87fbb
+/tool-schema-catalog/deepseek-ai-dsh-tool-wordinweb/word-document-project:
+  en: 8841e00962f38c92
+  zh: 780ee527b041c4fd
+/tool-schema-catalog/deepseek-ai-dsh-tool-wordinweb/word-document-save:
+  en: dcf42bf5f3ddd4ff
+  zh: 2b6a0b1ce99f87b0

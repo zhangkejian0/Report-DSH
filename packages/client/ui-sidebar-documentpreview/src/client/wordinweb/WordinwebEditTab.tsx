@@ -5,6 +5,7 @@ import { DocxToolbar, DocxView, type DocxViewApi } from 'wordinweb'
 import { basenameOf } from '../definition.ts'
 import { reconcileBoundCoreProperties } from './core-properties.ts'
 import { editTargetOf, parseEditAddress } from './edit-address.ts'
+import { editSessionFor, editSessionPathOf, recordEditSession } from './edit-sessions.ts'
 import { bridge } from './save-bridge.ts'
 import type {} from './locales.ts'
 import css from './WordinwebEditTab.module.css'
@@ -28,14 +29,21 @@ function directoryOf(absolutePath: string): string {
   return absolutePath.replace(/[\\/][^\\/]+$/u, '')
 }
 
+/** Normalize Windows separators, because resource addresses decode to `/`-separated paths. */
+function normalizeSeparators(path: string): string {
+  return path.replace(/\\/g, '/')
+}
+
 /**
  * Host the advanced WordInWeb ribbon editor for one `.docx`, and open the
  * Session that edits it. Entering edit state creates that Session in the
  * document's own directory, because the `word_document_*` tools reach files
- * only through their owning Workspace; it is archived so the list stays clean
- * while 「查看对话」 still reaches its native conversation.
+ * only through their owning Workspace; one document keeps one such Session
+ * per window. The main view then moves onto the Session — its own Sidebar
+ * shows this editor through the tab the record seeds — and the preview-side
+ * tab that started the flow closes itself.
  * @param props - this tab's reader and the WordInWeb dictionary.
- * @returns the ribbon, the editable document, and its save, download, and conversation actions.
+ * @returns the ribbon, the editable document, and its save and download actions.
  */
 export function WordinwebEditTab({ useTabInfo, t }: WordinwebEditTabProps): ReactNode {
   const { tab } = useTabInfo()
@@ -67,22 +75,43 @@ export function WordinwebEditTab({ useTabInfo, t }: WordinwebEditTabProps): Reac
 
   useEffect(() => {
     if (ownerSession === undefined || path === undefined) return
+    // The tab an edit Session's own Sidebar shows hosts its Session already:
+    // creating another one for the same document would fork the conversation
+    // the operator just opened.
+    if (editSessionPathOf(ownerSession) === path) return
     const create = bridge.create
     const stat = bridge.stat
     const prompt = bridge.prompt
-    if (create === undefined || stat === undefined || prompt === undefined) return
+    const navigate = bridge.navigate
+    if (create === undefined || stat === undefined || prompt === undefined || navigate === undefined) return
     const key = `${ownerSession}:${path}`
     if (createdFor.current === key) return
     createdFor.current = key
     const closed = { settled: false }
     void (async () => {
       try {
-        const sessionId = await create(directoryOf(await stat(ownerSession, path, tab.signal)), tab.signal)
-        // A Session joins its Workspace list only once it takes a turn, so this
-        // one opens by naming the document it edits rather than sitting blank.
-        await prompt(sessionId, t('sessionInstruction', { path }), tab.signal)
+        const absolutePath = normalizeSeparators(await stat(ownerSession, path, tab.signal))
+        // One document keeps one edit Session per window: re-entering edit
+        // moves to the Session that already owns it instead of forking another.
+        let sessionId = editSessionFor(absolutePath)
+        if (sessionId === undefined) {
+          sessionId = await create(directoryOf(absolutePath), tab.signal)
+          // The record outlives this tab, so the Session's own Sidebar seeds the
+          // document tab when the operator reaches it. The absolute path
+          // matters: the created Session's Workspace root is the document's own
+          // directory, not the previewing Session's root.
+          recordEditSession(sessionId, absolutePath)
+          // A Session joins its Workspace list only once it takes a turn, so
+          // this one opens by naming the document it edits rather than blank.
+          await prompt(sessionId, t('sessionInstruction', { path }), tab.signal)
+        }
         if (closed.settled) return
         setStatus(t('sessionReady'))
+        // The edit Session takes over: the main view moves onto it, its own
+        // Sidebar shows the seeded document tab, and this preview-side host
+        // steps aside so the editor lives in exactly one place.
+        navigate(sessionId)
+        tab.actions.close()
       } catch (error: unknown) {
         createdFor.current = undefined
         if (closed.settled) return

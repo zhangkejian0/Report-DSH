@@ -80,6 +80,7 @@ import type { WorkflowRun, WorkflowStartRequest } from '@deepseek-ai/dsh-workflo
 import * as ToolRalph from '@deepseek-ai/dsh-tool-ralph'
 import * as ToolWorkflow from '@deepseek-ai/dsh-tool-workflow'
 import * as ToolWorkspaceDependencies from '@deepseek-ai/dsh-tool-workspace-dependencies'
+import * as ToolWordinweb from '@deepseek-ai/dsh-tool-wordinweb'
 import { githubSlug } from './verify-md-links.ts'
 
 /** Attachment seam marker that makes the attachments-conditional `read_image` schema harvestable. */
@@ -673,6 +674,17 @@ const TOOL_PACKAGES: ToolPackage[] = [
     },
     note:
       'web_search and web_fetch keep provider selection behind ctx.web so model-visible schemas stay stable across backend swaps.',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-tool-wordinweb',
+    dir: 'tool-wordinweb',
+    source: 'packages/document/tool-wordinweb/src/index.ts',
+    requires: ['ctx.tools'],
+    writes: ['tool/call', 'tool/result'],
+    async mount(ctx) {
+      // Schema harvest loads no document; every tool schema is static.
+      await ctx.plugin(ToolWordinweb)
+    },
   },
 ]
 

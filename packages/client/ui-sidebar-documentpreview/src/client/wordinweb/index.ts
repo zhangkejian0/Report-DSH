@@ -1,15 +1,20 @@
-/** WordInWeb metadata, keyed document body, and its own edit tab. */
+/** WordInWeb metadata, keyed document body, its own edit tab, and the edit Session's tab seed. */
 import type { Context } from '@deepseek-ai/cordis'
 import type { SessionRequestId } from '@deepseek-ai/dsh-api-remotes/client'
 import type { WorkspaceId, WorkspaceView } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type { SidebarRightTabDefinition } from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
+import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import { sessionFileAddress } from '@deepseek-ai/dsh-util-workspace-path'
 import type {} from '../index.ts'
 import type { DocumentPreviewDefinition } from '../document/registry.ts'
 import { basenameOf } from '../definition.ts'
 import { WordinwebAction } from './WordinwebAction.tsx'
 import { WordinwebBody } from './WordinwebBody.tsx'
 import { WordinwebEditTab } from './WordinwebEditTab.tsx'
-import { WORDINWEB_EDIT_ADDRESS, parseEditAddress } from './edit-address.ts'
+import { WordinwebEditSessionSeed } from './WordinwebEditSessionSeed.tsx'
+import { WORDINWEB_EDIT_ADDRESS, editAddressFor, parseEditAddress } from './edit-address.ts'
+import { markEditSessionSeeded, unseededEditSessionPath } from './edit-sessions.ts'
 import { bridge } from './save-bridge.ts'
 import { en, zh } from './locales.ts'
 
@@ -81,7 +86,8 @@ function owningWorkspaceId(items: readonly WorkspaceView[], directory: string): 
 }
 
 /**
- * Register the WordInWeb dictionary, metadata, toolbar action, body, and edit tab.
+ * Register the WordInWeb dictionary, metadata, toolbar action, body, edit tab,
+ * and the Session-header occupant that seeds an edit Session's own tab.
  * @param ctx - owning plugin context.
  */
 export function apply(ctx: Context): void {
@@ -98,7 +104,7 @@ export function apply(ctx: Context): void {
   ctx.effect(() => ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register({
     name: 'sidebar.right.pane.tab', key: WORDINWEB_EDIT_ID, locale: 'sidebarWordinweb',
   }, WordinwebEditTab)), 'document-wordinweb: edit tab')
-  ctx.inject(['remote', 'remote.workspaceFiles', 'remote.session', 'sessions', 'workspaces'], (scope) => {
+  ctx.inject(['remote', 'remote.workspaceFiles', 'remote.session', 'sessions', 'workspaces', 'sidebarRight', 'uiWorkspace'], (scope) => {
     const unwrap = <T>(result: { ok: true; value: T } | { ok: false; error: { message?: string } }): T => {
       if (result.ok) return result.value
       throw new Error(result.error.message ?? 'remote call failed')
@@ -118,6 +124,7 @@ export function apply(ctx: Context): void {
       unwrap(await scope.remote.workspaceFiles.readBytes(sessionId, path, {}, signal)).data
     bridge.stat = async (sessionId, path, signal) =>
       unwrap(await scope.remote.workspaceFiles.stat(sessionId, path, signal)).absolutePath
+    bridge.navigate = (sessionId) => { scope.uiWorkspace.openSession(sessionId) }
     bridge.create = async (cwd, signal) => {
       signal.throwIfAborted()
       // A `cwd` create publishes a Session the Host leaves Ungrouped; naming the
@@ -127,12 +134,41 @@ export function apply(ctx: Context): void {
         ? scope.sessions.create({ cwd })
         : scope.sessions.create({ workspaceId })
     }
+    scope.effect(() => ctx.slots.inject('conversation.session.header.utilities', () => ctx.slots.register({
+      name: 'conversation.session.header.utilities',
+      id: 'wordinweb-edit-session',
+      order: 20,
+      locale: 'sidebarWordinweb',
+      inject: (sessionId: SessionId) => ({
+        hooks: { sidebarMounted: scope.sidebarRight.mounted },
+        seedEditTab: () => seedEditTab(sessionId),
+      }),
+    }, WordinwebEditSessionSeed)), 'document-wordinweb: edit session seed')
+    /**
+     * Place the recorded document's edit tab in one edit Session's own surface.
+     * @param sessionId - the edit Session whose header occupant asks.
+     * @returns whether the owed tab is present after the attempt; false when
+     * none is owed or the surface did not adopt it.
+     */
+    function seedEditTab(sessionId: SessionId): boolean {
+      const documentPath = unseededEditSessionPath(sessionId)
+      if (documentPath === undefined) return false
+      const fileAddress = sessionFileAddress(sessionId, documentPath)
+      const present = (): boolean =>
+        scope.sidebarRight.tabsIn(sessionId).some(tab => parseEditAddress(tab.contentId) === fileAddress)
+      if (!present()) scope.sidebarRight.openResourceIn(sessionId, editAddressFor(fileAddress))
+      // Seeding claims its goal only once the surface really holds the tab, so
+      // a surface that was never adopted retries on the Session's next mount.
+      if (present()) markEditSessionSeeded(sessionId)
+      return present()
+    }
     scope.effect(() => () => {
       bridge.save = undefined
       bridge.prompt = undefined
       bridge.create = undefined
       bridge.stat = undefined
       bridge.read = undefined
+      bridge.navigate = undefined
     })
   })
 }

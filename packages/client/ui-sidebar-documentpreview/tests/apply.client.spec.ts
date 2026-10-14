@@ -30,6 +30,13 @@ import { IMAGE_BODY_ID } from '../src/client/image/index.ts'
 import { LazyPdfBody } from '../src/client/pdf/LazyPdfBody.tsx'
 import { LazyExcelBody } from '../src/client/excel/LazyExcelBody.tsx'
 import { PDF_BODY_ID } from '../src/client/pdf/index.ts'
+import { ThermalAction } from '../src/client/thermal/ThermalAction.tsx'
+import { ThermalAnalysisTab } from '../src/client/thermal/ThermalAnalysisTab.tsx'
+import { THERMAL_ANALYSIS_TAB_ID } from '../src/client/thermal/index.ts'
+import { WordinwebAction } from '../src/client/wordinweb/WordinwebAction.tsx'
+import { WordinwebBody } from '../src/client/wordinweb/WordinwebBody.tsx'
+import { WordinwebEditTab } from '../src/client/wordinweb/WordinwebEditTab.tsx'
+import { WORDINWEB_BODY_ID, WORDINWEB_EDIT_ID } from '../src/client/wordinweb/index.ts'
 import { CodeBody } from '../src/client/code/CodeBody.tsx'
 import { en, zh } from '../src/client/locales.ts'
 import type { textFace } from '../src/client/face.ts'
@@ -99,6 +106,11 @@ describe('ui-sidebar-documentpreview apply', () => {
       ['sidebar.right.tab.document.action', '@deepseek-ai/dsh-client-ui-sidebar-documentpreview/office', 'sidebarOffice', OfficeFontAction],
       ['sidebar.right.tab.document', '@deepseek-ai/dsh-client-ui-sidebar-documentpreview/office', 'sidebarOffice', OfficeBody],
       ['sidebar.right.tab.document.office.pdf', '@deepseek-ai/dsh-client-ui-sidebar-documentpreview/office', 'sidebarPdf', LazyPdfBody],
+      ['sidebar.right.tab.document.action', IMAGE_BODY_ID, 'sidebarThermal', ThermalAction],
+      ['sidebar.right.pane.tab', THERMAL_ANALYSIS_TAB_ID, 'sidebarThermal', ThermalAnalysisTab],
+      ['sidebar.right.tab.document.action', WORDINWEB_BODY_ID, 'sidebarWordinweb', WordinwebAction],
+      ['sidebar.right.tab.document', WORDINWEB_BODY_ID, 'sidebarWordinweb', WordinwebBody],
+      ['sidebar.right.pane.tab', WORDINWEB_EDIT_ID, 'sidebarWordinweb', WordinwebEditTab],
       ['sidebar.right.tab.document', '@deepseek-ai/dsh-client-ui-sidebar-documentpreview/excel', 'sidebarExcel', LazyExcelBody],
       ['sidebar.right.tab.document', '@deepseek-ai/dsh-client-ui-sidebar-documentpreview/code', 'sidebarCodePreview', CodeBody],
     ])
@@ -119,9 +131,13 @@ describe('ui-sidebar-documentpreview apply', () => {
     const previews = ctx.get('documentPreviews')
     if (previews === undefined) throw new Error('documentPreviews was not provided')
     const sharedHighlighter = '@deepseek-ai/dsh-client-ui-sidebar-documentpreview/code'
+    // WordInWeb serves .docx at the extension band, superseding the earlier
+    // builtin Office conversion preview for that suffix.
+    expect(previews.candidates('file.docx')[0]?.id).toBe(WORDINWEB_BODY_ID)
     const owners = new Map<string, string>()
     for (const definition of previews.getSnapshot()) {
       for (const extension of new Set([...definition.extensions, ...definition.binaryExtensions ?? []])) {
+        if (extension === 'docx') continue
         const winner = previews.candidates(`file.${extension}`)[0]
         const earlier = owners.get(extension)
         if (earlier === undefined) {

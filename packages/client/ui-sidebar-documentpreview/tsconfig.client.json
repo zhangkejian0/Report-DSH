@@ -72,7 +72,16 @@
       "path": "../../document/office-to-pdf"
     },
     {
+      "path": "../../document/thermal-analyze"
+    },
+    {
       "path": "../ui-settings/tsconfig.client.json"
+    },
+    {
+      "path": "../ui-conversation/tsconfig.client.json"
+    },
+    {
+      "path": "../ui-workspace/tsconfig.client.json"
     }
   ]
 }
