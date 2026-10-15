@@ -91,3 +91,18 @@ export function defaultReportName(templatePath: string, now: Date): string {
   const pad = (value: number): string => String(value).padStart(2, '0')
   return `${base}-${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`
 }
+
+/** Base file name a blank template takes when the library names it. */
+export const BLANK_TEMPLATE_BASE = '空白模版'
+
+/**
+ * The file name a new blank template takes, with an incrementing suffix when
+ * the base name is already present in the template directory.
+ * @param taken - file names already present under 报告模版/.
+ * @returns a .docx file name absent from `taken`.
+ */
+export function uniqueTemplateName(taken: ReadonlySet<string>): string {
+  let name = `${BLANK_TEMPLATE_BASE}.docx`
+  for (let index = 2; taken.has(name); index += 1) name = `${BLANK_TEMPLATE_BASE}-${index}.docx`
+  return name
+}

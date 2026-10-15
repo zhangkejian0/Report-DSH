@@ -1,4 +1,4 @@
-/** The built-in sample template: one composed DOCX as base64, written into 报告模版/ on first use. */
+/** The built-in templates: the composed sample and the blank starter, written into 报告模版/ on demand. */
 
 /**
  * The sample template the wizard offers to write when the template directory
@@ -49,6 +49,49 @@ export const SAMPLE_TEMPLATE_BASE64 = [
   'AHdvcmQvX3JlbHMvZG9jdW1lbnQueG1sLnJlbHNQSwECFAAUAAAACAAAQCFQ5YCXUAECAADGBwAADwAAAAAAAAAAAAAAAAAhBwAA',
   'd29yZC9zdHlsZXMueG1sUEsBAhQAFAAAAAgAAEAhUG9tUmkKAQAAHQMAABAAAAAAAAAAAAAAAAAATwkAAHdvcmQvZm9vdGVyMS54',
   'bWxQSwUGAAAAAAYABgB+AQAAhwoAAAAA',
+].join('')
+
+/**
+ * The blank template 「新建空白模版」 writes: the sample template's package
+ * with the body reduced to one empty paragraph on an A4 page, so manual
+ * authoring starts from zero in a file every Word tool in this product opens.
+ * word/document.xml is stored uncompressed, keeping the empty body readable
+ * to tests that scan the decoded bytes.
+ */
+export const BLANK_TEMPLATE_BASE64 = [
+  'UEsDBBQAAAAIAABAIVAE4Gyb6wAAAIoCAAATAAAAW0NvbnRlbnRfVHlwZXNdLnhtbK2SsU7DMBCGXyXyimqnDAwoSQdgBQZewHIu',
+  'iYXts+6uwX17lKZ0QFW7dL7//79vuGZXYqhmIPaYWrXVtdp1zdchA1clhsStmkTyszHsJoiWNWZIJYYBKVphjTSabN23HcE81vWT',
+  'cZgEkmxk2VBd8wqD3Qep3opAWiklBlW9rLkF1Sqbc/DOisdklqu52CMIfKU4p/6f3eZkpgnCMcOTz/xwInzMQOR7qD4tybuN0Crz',
+  'g9SbHt0+QhJ9XfQCD4fBOzj3l7VM6IDZpzEGfb5E69NND5ZDAL6/xbp7Ez8gCtD2/vx1+I9vjt/W/QJQSwMEFAAAAAgAAEAhUF8z',
+  'lVKXAAAABwEAAAsAAABfcmVscy8ucmVsc43PsQ7CIBQF0F8h7wP6WgcHU9rFpavpDxB4bYnAI4CKf+/iYI2D683Nubn9WL0Td0rZ',
+  'cpDQNS2MQ38hp4rlkDcbs6jehSxhKyWeELPeyKvccKRQvVs4eVVyw2nFqPRVrYSHtj1i+jRgb4rJSEiT6UDMz0j/2LwsVtOZ9c1T',
+  'KD8mvhogZpVWKhIenAyad9xU7wCHHncXhxdQSwMEFAAAAAAAAAAhAEueEk6nAQAApwEAABEAAAB3b3JkL2RvY3VtZW50LnhtbDw/',
+  'eG1sIHZlcnNpb249IjEuMCIgZW5jb2Rpbmc9IlVURi04IiBzdGFuZGFsb25lPSJ5ZXMiPz48dzpkb2N1bWVudCB4bWxuczp3PSJo',
+  'dHRwOi8vc2NoZW1hcy5vcGVueG1sZm9ybWF0cy5vcmcvd29yZHByb2Nlc3NpbmdtbC8yMDA2L21haW4iIHhtbG5zOnI9Imh0dHA6',
+  'Ly9zY2hlbWFzLm9wZW54bWxmb3JtYXRzLm9yZy9vZmZpY2VEb2N1bWVudC8yMDA2L3JlbGF0aW9uc2hpcHMiPjx3OmJvZHk+PHc6',
+  'cC8+PHc6c2VjdFByPjx3OmZvb3RlclJlZmVyZW5jZSB3OnR5cGU9ImRlZmF1bHQiIHI6aWQ9InJJZDMiLz48dzpwZ1N6IHc6dz0i',
+  'MTE5MDYiIHc6aD0iMTY4MzgiLz48dzpwZ01hciB3OnRvcD0iMzYwMCIgdzpyaWdodD0iMjg4MCIgdzpib3R0b209IjM2MDAiIHc6',
+  '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',
 ].join('')
 
 /**

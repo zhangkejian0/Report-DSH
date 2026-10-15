@@ -33,6 +33,32 @@
   word-break: break-all;
 }
 
+.create {
+  display: flex;
+  gap: 6px;
+}
+
+.createName {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--dsh-border, #d0d5dd);
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 12px;
+  background: none;
+  color: inherit;
+}
+
+.createButton {
+  border: 1px solid var(--dsh-border, #d0d5dd);
+  border-radius: 6px;
+  background: none;
+  padding: 3px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
 .note {
   margin: 0;
   font-size: 12px;

@@ -1,17 +1,17 @@
 /**
  * The report wizard's pure halves: name validation and defaults, the task
  * book's data package and working discipline, the generation orchestration's
- * adopt/create/reuse decision and asset writes, and the embedded sample
- * template's integrity.
+ * adopt/create/reuse decision and asset writes, and the embedded sample and
+ * blank templates' integrity.
  */
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { ThermalAnalysis } from '@deepseek-ai/dsh-thermal-analyze/types'
-import { defaultReportName, isValidReportName } from '../src/client/report/definition.ts'
+import { defaultReportName, isValidReportName, uniqueTemplateName } from '../src/client/report/definition.ts'
 import { buildTaskBook, type ReportImageDatum } from '../src/client/report/task-book.ts'
 import { startGeneration, type GenerationDeps } from '../src/client/report/generate.ts'
-import { SAMPLE_TEMPLATE_BASE64 } from '../src/client/report/sample-template.ts'
+import { BLANK_TEMPLATE_BASE64, SAMPLE_TEMPLATE_BASE64 } from '../src/client/report/sample-template.ts'
 
 /** Minimal structural analysis fixture; only the fields the task book reads. */
 function analysisOf(max: number, thermal = 'aG90'): ThermalAnalysis {
@@ -156,5 +156,26 @@ describe('sample template', () => {
     expect(bytes[0]).toBe(0x50)
     expect(bytes[1]).toBe(0x4b)
     expect(bytes.length).toBeGreaterThan(1000)
+  })
+})
+
+describe('blank template', () => {
+  it('is a DOCX whose stored document body holds no text', () => {
+    const bytes = Uint8Array.from(atob(BLANK_TEMPLATE_BASE64), char => char.charCodeAt(0))
+    expect(bytes[0]).toBe(0x50)
+    expect(bytes[1]).toBe(0x4b)
+    // word/document.xml is stored uncompressed, so the XML is readable in place.
+    const text = new TextDecoder().decode(bytes)
+    const start = text.indexOf('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document')
+    const end = text.indexOf('</w:document>', start)
+    const xml = text.slice(start, end)
+    expect(xml).toContain('<w:body><w:p/>')
+    expect(xml).not.toContain('<w:t')
+  })
+
+  it('names blank templates without colliding with existing ones', () => {
+    expect(uniqueTemplateName(new Set())).toBe('空白模版.docx')
+    expect(uniqueTemplateName(new Set(['空白模版.docx']))).toBe('空白模版-2.docx')
+    expect(uniqueTemplateName(new Set(['空白模版.docx', '空白模版-2.docx']))).toBe('空白模版-3.docx')
   })
 })

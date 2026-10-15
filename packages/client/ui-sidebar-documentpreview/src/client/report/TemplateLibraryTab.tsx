@@ -4,9 +4,9 @@ import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
 import { sessionFileAddress } from '@deepseek-ai/dsh-util-workspace-path'
 import { editAddressFor } from '../wordinweb/edit-address.ts'
-import { REPORT_BUILDER_KIND, REPORT_TEMPLATES_DIR } from './definition.ts'
+import { isValidReportName, REPORT_BUILDER_KIND, REPORT_TEMPLATES_DIR, uniqueTemplateName } from './definition.ts'
 import { reportBridge } from './report-bridge.ts'
-import { sampleTemplateFiles } from './sample-template.ts'
+import { BLANK_TEMPLATE_BASE64, sampleTemplateFiles } from './sample-template.ts'
 import type {} from './locales.ts'
 import css from './TemplateLibraryTab.module.css'
 
@@ -20,12 +20,19 @@ const codeOf = (cause: unknown): string | undefined =>
     ? cause.code
     : undefined
 
+/** Why 「新建空白模版」 refused or failed, mapped to one notice line each. */
+type BlankProblem =
+  | { readonly kind: 'invalid' }
+  | { readonly kind: 'exists' }
+  | { readonly kind: 'failed'; readonly message: string }
+
 /**
  * List the workspace's report templates with the two doors each one opens:
  * generation, through the wizard with the template preselected, and editing,
- * through the WordInWeb editor's own session chain. An empty directory offers
- * the embedded sample template, and a collapsed card keeps the token
- * vocabulary in reach for template authors.
+ * through the WordInWeb editor's own session chain. A new blank template can
+ * be started from zero under a typed name, an empty directory offers the
+ * embedded sample template, and a collapsed card keeps the token vocabulary
+ * in reach for template authors.
  * @param props - this tab's reader, session standards, and the report dictionary.
  * @returns the library list, its empty state, or its unavailable notice.
  */
@@ -36,6 +43,9 @@ export function TemplateLibraryTab({ useTabInfo, sessionId, useSessions, t }: Te
   const [error, setError] = useState<string>()
   const [creating, setCreating] = useState(false)
   const [showConvention, setShowConvention] = useState(false)
+  const [newName, setNewName] = useState('')
+  const [creatingBlank, setCreatingBlank] = useState(false)
+  const [blankProblem, setBlankProblem] = useState<BlankProblem>()
 
   const listDirectory = reportBridge.list
   const write = reportBridge.write
@@ -69,6 +79,33 @@ export function TemplateLibraryTab({ useTabInfo, sessionId, useSessions, t }: Te
       .finally(() => { setCreating(false) })
   }
 
+  /** Write one blank template under the entered name, then open it for hand editing. */
+  const createBlank = (): void => {
+    if (cwd === undefined || write === undefined || templates === undefined) return
+    const entered = newName.trim().replace(/\.docx$/iu, '').trim()
+    if (entered !== '' && !isValidReportName(entered)) {
+      setBlankProblem({ kind: 'invalid' })
+      return
+    }
+    const taken = new Set(templates.map(path => path.slice(REPORT_TEMPLATES_DIR.length + 1)))
+    const name = entered === '' ? uniqueTemplateName(taken) : `${entered}.docx`
+    if (entered !== '' && taken.has(name)) {
+      setBlankProblem({ kind: 'exists' })
+      return
+    }
+    setCreatingBlank(true)
+    setBlankProblem(undefined)
+    void write(sessionId, `${REPORT_TEMPLATES_DIR}/${name}`, BLANK_TEMPLATE_BASE64, tab.signal)
+      .then(() => {
+        setNewName('')
+        reload()
+        tab.actions.openResource(editAddressFor(sessionFileAddress(sessionId, `${REPORT_TEMPLATES_DIR}/${name}`)))
+      }, (cause: unknown) => {
+        setBlankProblem({ kind: 'failed', message: cause instanceof Error ? cause.message : String(cause) })
+      })
+      .finally(() => { setCreatingBlank(false) })
+  }
+
   if (cwd === undefined || listDirectory === undefined || write === undefined) {
     return <p className={css.status} role="status">{t('library.unavailable')}</p>
   }
@@ -84,6 +121,30 @@ export function TemplateLibraryTab({ useTabInfo, sessionId, useSessions, t }: Te
           <p>{t('library.convention.image')}</p>
           <p>{t('library.convention.each')}</p>
         </div>
+      )}
+      <div className={css.create}>
+        <input
+          className={css.createName}
+          value={newName}
+          placeholder={t('library.blank.name')}
+          aria-label={t('library.blank.name')}
+          onChange={(event) => { setNewName(event.target.value); setBlankProblem(undefined) }}
+        />
+        <button
+          type="button"
+          className={css.createButton}
+          onClick={createBlank}
+          disabled={creatingBlank || templates === undefined}
+        >
+          {creatingBlank ? t('library.blank.busy') : t('library.blank.create')}
+        </button>
+      </div>
+      {blankProblem !== undefined && (
+        <p className={css.note}>
+          {blankProblem.kind === 'invalid' ? t('library.blank.invalid')
+            : blankProblem.kind === 'exists' ? t('library.blank.exists')
+              : t('library.blank.failed', { message: blankProblem.message })}
+        </p>
       )}
       {error !== undefined && <p className={css.note}>{t('library.failed', { message: error })}</p>}
       {templates !== undefined && templates.length === 0 && error === undefined && (
