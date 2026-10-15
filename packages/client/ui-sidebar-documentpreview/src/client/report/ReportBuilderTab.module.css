@@ -251,3 +251,25 @@
   opacity: 0.5;
   cursor: default;
 }
+
+.modeRow {
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.modeButton {
+  flex: 1;
+  border: 1px solid var(--dsh-border, #d0d5dd);
+  border-radius: 8px;
+  background: none;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.modeButtonActive {
+  border-color: var(--dsh-accent, #2563eb);
+  background: color-mix(in srgb, var(--dsh-accent, #2563eb) 10%, transparent);
+  font-weight: 600;
+}

@@ -34,6 +34,7 @@ One page per subsystem of the DeepSeek Harness: what it is, the data structures 
 | [approval.md](approval.md) | the one-shot user-approval seam: `ApprovalRequest`, `ApprovalOutcome`, per-session policy, audit events, and answerer contracts |
 | [office-to-pdf.md](office-to-pdf.md) | authorized Office-to-PDF conversion, native/WASM engines, and bounded shared reuse |
 | [thermal-analyze.md](thermal-analyze.md) | authorized thermal-image analysis through the external Fotric IRtek SDK analyzer |
+| [report-generate.md](report-generate.md) | deterministic Word report expansion from templates and thermal analyses, with token substitution and per-image loops |
 | [attachment.md](attachment.md) | durable image identity and metadata, validation inputs, verified reads, and the `AttachmentStore` seam |
 | [shell.md](shell.md) | the shell executor seam: `ShellExecRequest`/`Spec`, `ShellRunResult`, background `ShellProcess` handles |
 | [subprocess.md](subprocess.md) | the subprocess seam: fully-explicit `SubprocessSpawnSpec`, offset-based output readers, unclassified `SubprocessOutcome`, and the managed `DSH_*` environment vocabulary |

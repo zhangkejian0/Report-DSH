@@ -218,6 +218,11 @@ const SERVICE_ROLES: ServiceRole[] = [
     note: 'One authorized radiometric JPEG per call runs through the external Fotric IRtek SDK analyzer on the Host; the provider owns process admission, deadlines, and report validation.',
   },
   {
+    key: 'reportGenerate', pkg: 'report-generate', title: 'Deterministic report generation',
+    mode: 'core', consumers: ['client-ui-sidebar-documentpreview'],
+    note: 'One authorized template plus image paths per call re-measures through thermalAnalyze and expands on the Host without any model; the provider owns template validation, token substitution, and residue refusal.',
+  },
+  {
     key: 'attachments',
     pkg: 'attachment',
     title: 'Durable binary attachment storage',

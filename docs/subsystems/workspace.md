@@ -452,9 +452,11 @@ Host Remote file reads and workspace directory observations over the composed fi
 
 /**
  * Write complete bytes to one workspace file (fork extension for the
- * WordInWeb sidebar editor). Authorization and resolution reuse the read
- * path; the bytes then land on the resolved host path directly, because
- * the composed filesystem seam exposes no binary write.
+ * WordInWeb sidebar editor), creating the file and missing parent
+ * directories when absent. Authorization and resolution reuse the read
+ * path's workspace containment; an existing non-file entry is refused, and
+ * the bytes land on the resolved host path directly, because the composed
+ * filesystem seam exposes no binary write.
  * @param workspaceFileScope - header-derived workspace root for the Session identity on the wire.
  * @param path - absolute path or path relative to the workspace root.
  * @param base64 - complete file bytes, base64-encoded for JSON wire safety.

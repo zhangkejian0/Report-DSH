@@ -2576,6 +2576,24 @@ export interface Config {
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-repeat-tool-reminder -->
 
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-report-generate -->
+<a id="deepseek-aidsh-report-generate"></a>
+
+## `@deepseek-ai/dsh-report-generate`
+
+- `source`: [`packages/document/report-generate/src/index.ts:31`](../packages/document/report-generate/src/index.ts)
+
+```ts config-catalog
+/** Generation limits. */
+export interface Config {
+  /** Insertion width for thermal images in pixels. */
+  imageWidthPx: number
+  /** Maximum images one generation may expand. */
+  maxImages: number
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-report-generate -->
+
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-sandbox-local -->
 <a id="deepseek-aidsh-sandbox-local"></a>
 
@@ -4126,7 +4144,7 @@ export interface Config {
 ## `@deepseek-ai/dsh-tool-wordinweb`
 
 - `inject`: `tools`
-- `source`: [`packages/document/tool-wordinweb/src/index.ts:262`](../packages/document/tool-wordinweb/src/index.ts)
+- `source`: [`packages/document/tool-wordinweb/src/index.ts:375`](../packages/document/tool-wordinweb/src/index.ts)
 
 ```ts config-catalog
 /** Configuration for the WordInWeb document tools. */

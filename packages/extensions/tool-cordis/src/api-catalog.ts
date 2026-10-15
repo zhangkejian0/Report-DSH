@@ -1860,6 +1860,20 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'reportGenerate',
+    summary: 'A provider lifetime owning the configured image width and image cap.',
+    description: 'A provider lifetime owning the configured image width and image cap.',
+    methods: [
+      {
+        signature: '@Remote async generate( workspaceFileScope: WorkspaceFileScope, request: ReportGenerateRequest, signal: AbortSignal, ): Promise<ReportGenerateResult>',
+        description: 'Generate one report from the Session\'s template over its thermal images. Every image is re-measured by the Host\'s own analyzer, so the report carries fresh data whatever the client cached.',
+        parameters: [{ name: 'workspaceFileScope', description: 'Session header lookup shared with workspaceFiles.' }, { name: 'request', description: 'template, output, image paths, and author fields.' }, { name: 'signal', description: 'Remote cancellation.' }],
+        returns: 'the written report\'s absolute path, size, and image count.',
+        throws: ['{RemoteError} `report-generate/failed` with a `reason` detail on every refusal; nothing is written when generation refuses.'],
+      },
+    ],
+  },
+  {
     key: 'sandbox',
     summary: 'Abstract process-sandbox service.',
     description: 'Abstract process-sandbox service. confine must return enforcing argv or fail closed at wrap or runner-execution time; silent unconfined passthrough is forbidden. Functional probes arbitrate multi-runner chains and may be skipped for a sole candidate, whose own refusal remains the fail-closed end.',
@@ -3792,7 +3806,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
       },
       {
         signature: '@Remote async writeBytes( workspaceFileScope: WorkspaceFileScope, path: string, base64: string, signal: AbortSignal, ): Promise<WorkspaceFileStat>',
-        description: 'Write complete bytes to one workspace file (fork extension for the WordInWeb sidebar editor). Authorization and resolution reuse the read path; the bytes then land on the resolved host path directly, because the composed filesystem seam exposes no binary write.',
+        description: 'Write complete bytes to one workspace file (fork extension for the WordInWeb sidebar editor), creating the file and missing parent directories when absent. Authorization and resolution reuse the read path\'s workspace containment; an existing non-file entry is refused, and the bytes land on the resolved host path directly, because the composed filesystem seam exposes no binary write.',
         parameters: [{ name: 'workspaceFileScope', description: 'header-derived workspace root for the Session identity on the wire.' }, { name: 'path', description: 'absolute path or path relative to the workspace root.' }, { name: 'base64', description: 'complete file bytes, base64-encoded for JSON wire safety.' }, { name: 'signal', description: 'caller cancellation.' }],
         returns: 'the file\'s refreshed absolute path, version, and byte size.',
       },
@@ -6488,6 +6502,18 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'ReplayEnvelope',
     declaration: 'export interface ReplayEnvelope {\n    response: unknown;\n    blocks?: readonly unknown[];\n}',
+  },
+  {
+    name: 'ReportFields',
+    declaration: 'export interface ReportFields {\n    readonly title?: string;\n    readonly company?: string;\n    readonly inspector?: string;\n    readonly device?: string;\n}',
+  },
+  {
+    name: 'ReportGenerateRequest',
+    declaration: 'export interface ReportGenerateRequest {\n    readonly templatePath: string;\n    readonly outputPath: string;\n    readonly imagePaths: readonly string[];\n    readonly fields?: ReportFields;\n}',
+  },
+  {
+    name: 'ReportGenerateResult',
+    declaration: 'export interface ReportGenerateResult {\n    readonly absolutePath: string;\n    readonly bytes: number;\n    readonly images: number;\n}',
   },
   {
     name: 'RequestContext',

@@ -173,6 +173,7 @@ Every package below exports a Cordis plugin that a bundle patch can name in a Lo
 | Package | Config | Description |
 |---|---|---|
 | `@deepseek-ai/dsh-office-to-pdf` | yes | Shared Office-to-PDF conversion with bounded queues and caching |
+| `@deepseek-ai/dsh-report-generate` | yes | Deterministic Word report generation from templates and thermal-image analyses |
 | `@deepseek-ai/dsh-thermal-analyze` | yes | Thermal-image analysis through the Fotric IRtek file SDK analyzer |
 | `@deepseek-ai/dsh-tool-wordinweb` | yes | Model-facing Word document creation, inspection, and editing tools over the WordInWeb agent toolkit |
 

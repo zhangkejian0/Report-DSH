@@ -71,6 +71,7 @@ export const SERVICE_PAGE: Record<string, string> = {
   approval: 'approval.md',
   officeToPdf: 'office-to-pdf.md',
   thermalAnalyze: 'thermal-analyze.md',
+  reportGenerate: 'report-generate.md',
   attachments: 'attachment.md',
   shell: 'shell.md',
   shellEnv: 'shell.md',
@@ -962,6 +963,8 @@ export const TYPE_LINK_EXEMPTIONS: Readonly<Record<string, string>> = {
   TerminalRetentionFrame: 'Browser terminal window holds are owned by packages/api/terminal-controller/README.md',
   WebTerminalId: 'Browser terminal identity is owned by packages/api/terminal-controller/README.md',
   ThermalAnalysis: 'analyzer report contract is owned by packages/document/thermal-analyze/README.md',
+  ReportGenerateRequest: 'deterministic report generation request is owned by packages/document/report-generate/README.md',
+  ReportGenerateResult: 'deterministic report generation result is owned by packages/document/report-generate/README.md',
 }
 
 /** Repository data policy consumed by the Cordis catalog projector. */

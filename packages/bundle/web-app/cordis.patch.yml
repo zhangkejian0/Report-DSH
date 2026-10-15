@@ -289,6 +289,11 @@
       config:
         analyzerPath: D:/agworkspace/docgc/deepseek-harness/fotric_sdk/AnalyzeImage/ThermalAnalyzeJson.exe
 
+    # Deterministic Word report generation over templates and thermal analyses;
+    # the report wizard's fast mode calls it instead of dispatching an agent.
+    - id: report-generate
+      name: '@deepseek-ai/dsh-report-generate'
+
     # The right Sidebar's document tab: bounded file reads with selectable
     # Markdown, code, HTML, PDF, Office, and plain-text renderers.
     - id: ui-sidebar-documentpreview

@@ -34,6 +34,7 @@
 | [approval.md](approval.zh.md) | 一次性用户审批 seam：`ApprovalRequest`、`ApprovalOutcome`、逐会话策略、审计事件和 answerer 约定 |
 | [office-to-pdf.md](office-to-pdf.zh.md) | 已授权的 Office 到 PDF 转换、原生/WASM 引擎与有界共享复用 |
 | [thermal-analyze.md](thermal-analyze.zh.md) | 经授权的热像分析，通过外部 Fotric IRtek SDK 分析器 |
+| [report-generate.md](report-generate.zh.md) | 从模版与热像测量确定性展开 Word 报告，含占位符替换与逐图循环 |
 | [attachment.md](attachment.zh.md) | 持久图片标识与元数据、校验输入、经校验读取，以及 `AttachmentStore` seam |
 | [shell.md](shell.zh.md) | shell 执行器 seam：`ShellExecRequest`/`Spec`、`ShellRunResult`、后台 `ShellProcess` 句柄 |
 | [subprocess.md](subprocess.zh.md) | 子进程 seam：完全显式的 `SubprocessSpawnSpec`、基于偏移的输出读取器、不含分类的 `SubprocessOutcome`，以及受管 `DSH_*` 环境词汇 |

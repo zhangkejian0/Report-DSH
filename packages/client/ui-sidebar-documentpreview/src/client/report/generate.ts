@@ -1,6 +1,9 @@
-/** One generation run: write assets, dispatch the task book, adopt or create the report Session. */
+/** One generation run: the deterministic Host engine, or the agent task book in a report Session. */
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { ThermalAnalysis } from '@deepseek-ai/dsh-thermal-analyze/types'
+import type {
+  ReportGenerateRequest, ReportGenerateResult,
+} from '@deepseek-ai/dsh-report-generate/types'
 import type { WriteFile } from './report-bridge.ts'
 import { buildTaskBook, type ReportImageDatum } from './task-book.ts'
 import { REPORTS_DIR } from './definition.ts'
@@ -13,10 +16,22 @@ export interface GenerationImage {
   readonly analysis: ThermalAnalysis
 }
 
+/** Author-supplied report header fields; the fast engine substitutes them. */
+export interface GenerationFields {
+  readonly company?: string
+  readonly inspector?: string
+  readonly device?: string
+}
+
+/** How one generation runs. */
+export type GenerationMode = 'fast' | 'ai'
+
 /** What the wizard collected, plus where the run happens. */
 export interface GenerationRequest {
   /** Session hosting the wizard tab; its workspace scope authorizes every write. */
   readonly hostSessionId: SessionId
+  /** Which engine takes the run: the Host's deterministic engine or the agent. */
+  readonly mode: GenerationMode
   /** Adopt the blank host Session instead of creating a dedicated one. */
   readonly adoptHost: boolean
   /** Absolute host path of the workspace root, either separator style. */
@@ -27,6 +42,8 @@ export interface GenerationRequest {
   readonly reportName: string
   /** The measured images, in report order. */
   readonly images: readonly GenerationImage[]
+  /** Author-supplied header fields for the fast engine's tokens. */
+  readonly fields?: GenerationFields
 }
 
 /** The services one generation drives; all are plugin-lifetime closures. */
@@ -37,6 +54,8 @@ export interface GenerationDeps {
   readonly stat: (sessionId: SessionId, path: string, signal: AbortSignal) => Promise<string>
   /** Queue one user prompt into a Session's agent. */
   readonly prompt: (sessionId: SessionId, text: string, signal: AbortSignal) => Promise<unknown>
+  /** Run one deterministic generation on the Host engine. */
+  readonly generateFast: (sessionId: SessionId, request: ReportGenerateRequest, signal: AbortSignal) => Promise<ReportGenerateResult>
   /** Create one Session bound to a workspace directory. */
   readonly createSession: (cwd: string, signal: AbortSignal) => Promise<SessionId>
   /** Move the main view onto one Session. */
@@ -82,11 +101,13 @@ const sleep = (ms: number, signal: AbortSignal): Promise<void> =>
   })
 
 /**
- * Run one generation to the point of dispatch: every asset is on disk and the
- * task book is queued before returning, so a failure here is fully reportable
- * by the wizard. The edit-tab seeding that follows the agent's first save runs
- * detached: it outlives the wizard tab and claims nothing on timeout, leaving
- * the files tree as the fallback door to the finished report.
+ * Run one generation to its handoff point. The fast mode returns after one
+ * Host call, with the finished document already seated in its edit tab. The
+ * AI mode returns once every asset is on disk and the task book is queued, so
+ * a failure there is fully reportable by the wizard; the edit-tab seeding that
+ * follows the agent's first save runs detached: it outlives the wizard tab and
+ * claims nothing on timeout, leaving the files tree as the fallback door to
+ * the finished report.
  * @param request - the wizard's collected inputs and host Session.
  * @param deps - plugin-lifetime service closures.
  * @param signal - cancellation for the awaited phase only.
@@ -103,6 +124,21 @@ export async function startGeneration(
   const outputPath = `${outputDir}/${reportName}.docx`
   const assetsDir = `${outputDir}/assets`
   const absoluteOutput = `${root}/${outputPath}`
+
+  // Fast mode: one Host round trip; the finished file seats its edit tab in
+  // this Session immediately, with no conversation to step aside into. The
+  // request names only paths — the Host re-measures every image itself.
+  if (request.mode === 'fast') {
+    const result = await deps.generateFast(hostSessionId, {
+      templatePath,
+      outputPath,
+      imagePaths: images.map(image => image.path),
+      fields: { title: reportName, ...request.fields },
+    }, signal)
+    deps.recordEditSession(hostSessionId, result.absolutePath)
+    deps.openEditTab(hostSessionId, outputPath)
+    return { sessionId: hostSessionId, outputPath }
+  }
 
   const data: ReportImageDatum[] = []
   for (const image of images) {

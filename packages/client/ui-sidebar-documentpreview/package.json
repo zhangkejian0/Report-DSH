@@ -75,7 +75,6 @@
     "@deepseek-ai/dsh-client-ui-slots": "workspace:*",
     "@deepseek-ai/dsh-office-to-pdf": "workspace:*",
     "@deepseek-ai/dsh-host-webserver": "workspace:*",
-    "@deepseek-ai/dsh-office-to-pdf": "workspace:*",
     "@deepseek-ai/dsh-session": "workspace:*",
     "@deepseek-ai/dsh-thermal-analyze": "workspace:*",
     "@deepseek-ai/dsh-util-workspace-path": "workspace:*",
@@ -105,6 +104,7 @@
     "lib/types/**/*.d.ts"
   ],
   "dependencies": {
-    "@deepseek-ai/schemastery": "workspace:~"
+    "@deepseek-ai/schemastery": "workspace:~",
+    "@deepseek-ai/dsh-report-generate": "workspace:*"
   }
 }

@@ -68,6 +68,7 @@ const SENTENCE_MODEL_EXPERIENCE: Readonly<Record<string, SentenceContract>> = {
   'packages/computer-use/computer-use': { kind: 'none', reason: 'The registry only reserves provider names; providers own all model-facing tools and guidance.' },
   'packages/document/office-to-pdf': { kind: 'none', reason: 'The provider returns PDF bytes without constructing model input.' },
   'packages/document/thermal-analyze': { kind: 'none', reason: 'The service runs the external analyzer subprocess and returns report data without constructing model input.' },
+  'packages/document/report-generate': { kind: 'none', reason: 'The engine expands templates deterministically and returns document bytes without constructing model input.' },
 
   'packages/credentials/deepseek-account': { kind: 'none', reason: 'Account authorization registers no model context or tools; credentials affect HTTP authentication only.' },
   'packages/credentials/deepseek-account-platform': { kind: 'none', reason: 'Account authorization registers no model context or tools; credentials affect HTTP authentication only.' },

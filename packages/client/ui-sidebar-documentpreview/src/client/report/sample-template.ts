@@ -7,48 +7,62 @@
  * agent toolkit and embedded so no Host round trip is needed to seed it.
  */
 export const SAMPLE_TEMPLATE_BASE64 = [
-  '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',
-  'bWxQSwUGAAAAAAYABgB+AQAAhwoAAAAA',
+  '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',
+  'bWxQSwUGAAAAAAYABgB+AQAAigoAAAAA',
+  '',
 ].join('')
 
 /**
@@ -100,26 +114,39 @@ export const BLANK_TEMPLATE_BASE64 = [
  */
 export const SAMPLE_TEMPLATE_NOTE = `# 报告模版说明
 
-本目录下的 .docx 都是报告模版。生成报告时，向导把热像分析数据交给 AI，AI 按模版的结构和样式填充，另存到「报告/」目录。
+本目录下的 .docx 都是报告模版。快速生成时本地引擎按模版逐字展开；AI 生成时由 AI 按同一占位符填充，另存到「报告/」目录。
 
 ## 占位符（可选）
 
-放在文本里即可，生成时自动替换；不放占位符时 AI 会按模版既有结构仿写。
+放在文本里即可，生成时自动替换；不放占位符的段落保持原样。
 
-- 全局：{{report_title}} {{company}} {{inspector}} {{date}} {{device}} {{camera_model}} {{camera_serial}} {{overall_conclusion}}
-- 单图（每张选中的热像图一节）：{{image_file}} {{image_thermal}}（插图位） {{t_max}} {{t_max_at}} {{t_min}} {{t_avg}} {{marker_table}} {{image_comment}}
+- 全局（填一次）：{{report_title}} {{company}} {{inspector}} {{date}} {{device}} {{camera_model}} {{camera_serial}} {{overall_conclusion}}
+- 汇总：{{image_count}} {{overall_max_temp}} {{overall_max_at}} {{overall_max_image}} {{overall_min_temp}} {{overall_avg_temp}}
+- 单图（每张选中的热像图一份）：{{image_file}} {{image_thermal}}（插图位） {{t_max}} {{t_max_at}} {{t_min}} {{t_avg}} {{marker_table}} {{image_comment}}
 
-## 单图节的两种写法
+## 重复节（每张图一份）
 
-1. 显式括起：用 {{#each_image}} 和 {{/each_image}} 两个独占段落把"单图分析"一节括起来——括起内容按原样为每张图复制一份（推荐，结果最可预期）。
-2. 样例仿写：不做括起，写一个"样例单图节"，AI 仿照它的结构为每张图生成。
+用 {{#each_image}} 与 {{/each_image}} 标记，两种位置语义：
+
+1. 正文段落：两个标记各占一段，把一图的完整版面括起来——括起内容按原样为每张图复制一份（推荐）。
+2. 表格行：两个标记放在同一表格行的单元格里——该行为每张图复制一行，适合检测汇总表。
+
+标记所在的段落/单元格只放标记本身；其余内容保持模板样式。快速生成要求必须有标记；AI 生成还支持样例仿写。
+
+## 版式提示
+
+- 每图一页：把单图节第一段设为「段前分页」（Word 段落设置 → 换行和分页），复制后每节自然从新页开始。
+- 目录：用 Word 目录域；生成后 Word 打开时会自动刷新页码。
 
 ## 修改模版
 
 直接在本目录用任意 Word 工具编辑 .docx；也可以用「编辑」功能让 AI 帮忙改结构、加占位符。
 `
-
-/** Base64-encode UTF-8 text; `btoa` alone rejects characters beyond Latin-1. */
+/**
+ * Base64-encode UTF-8 text; `btoa` alone rejects characters beyond Latin-1.
+ * @param text - UTF-8 text to encode.
+ * @returns the base64 form of the text's bytes.
+ */
 export function base64OfText(text: string): string {
   const bytes = new TextEncoder().encode(text)
   let binary = ''

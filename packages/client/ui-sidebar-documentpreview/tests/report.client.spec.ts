@@ -87,6 +87,9 @@ describe('startGeneration', () => {
         throw new Error('absent')
       }),
       prompt: vi.fn(async () => undefined),
+      generateFast: vi.fn(async (_sessionId: SessionId, request: { imagePaths: readonly string[] }) => ({
+        absolutePath: 'C:/ws/报告/demo/demo.docx', bytes: 1234, images: request.imagePaths.length,
+      })),
       createSession: vi.fn(async () => 's-new' as SessionId),
       navigate: vi.fn(),
       openEditTab: vi.fn(),
@@ -97,8 +100,9 @@ describe('startGeneration', () => {
     }
   }
 
-  const request = (over?: { adoptHost?: boolean; blank?: boolean }) => ({
+  const request = (over?: { adoptHost?: boolean; blank?: boolean; mode?: 'fast' | 'ai' }) => ({
     hostSessionId: host,
+    mode: over?.mode ?? 'ai' as const,
     adoptHost: over?.blank === true,
     workspaceRoot: 'C:\\ws',
     templatePath: '报告模版/示范模版.docx',
@@ -147,6 +151,27 @@ describe('startGeneration', () => {
     const dep = deps({ write: vi.fn(async () => { throw new Error('disk full') }) })
     await expect(startGeneration(request(), dep, signal)).rejects.toThrow('disk full')
     expect(vi.mocked(dep.prompt)).not.toHaveBeenCalled()
+  })
+
+  it('fast mode takes one Host call and seats the edit tab in the host Session', async () => {
+    const dep = deps()
+    const outcome = await startGeneration(request({ mode: 'fast' }), dep, signal)
+    expect(outcome).toEqual({ sessionId: host, outputPath: '报告/demo/demo.docx' })
+    expect(vi.mocked(dep.generateFast)).toHaveBeenCalledTimes(1)
+    const argument = vi.mocked(dep.generateFast).mock.calls[0]?.[1]
+    expect(argument?.templatePath).toBe('报告模版/示范模版.docx')
+    expect(argument?.outputPath).toBe('报告/demo/demo.docx')
+    expect(argument?.imagePaths).toEqual(['IR/ir0007.jpg', 'IR/ir0008.jpg'])
+    expect(dep.write).not.toHaveBeenCalled()
+    expect(dep.createSession).not.toHaveBeenCalled()
+    expect(dep.recordEditSession).toHaveBeenCalledWith(host, 'C:/ws/报告/demo/demo.docx')
+    expect(dep.openEditTab).toHaveBeenCalledWith(host, '报告/demo/demo.docx')
+  })
+
+  it('fast mode reports the engine failure and seats nothing', async () => {
+    const dep = deps({ generateFast: vi.fn(async () => { throw new Error('residue') }) })
+    await expect(startGeneration(request({ mode: 'fast' }), dep, signal)).rejects.toThrow('residue')
+    expect(dep.openEditTab).not.toHaveBeenCalled()
   })
 })
 

@@ -1276,6 +1276,9 @@ importers:
       '@deepseek-ai/dsh-deque':
         specifier: workspace:*
         version: link:../../util/deque
+      '@deepseek-ai/dsh-report-generate':
+        specifier: workspace:*
+        version: link:../../document/report-generate
       '@deepseek-ai/dsh-util-values':
         specifier: workspace:*
         version: link:../../util/values
@@ -2789,6 +2792,9 @@ importers:
       '@deepseek-ai/dsh-plugin-manager':
         specifier: workspace:*
         version: link:../../boot/plugin-manager
+      '@deepseek-ai/dsh-report-generate':
+        specifier: workspace:*
+        version: link:../../document/report-generate
       '@deepseek-ai/dsh-schedule':
         specifier: workspace:*
         version: link:../../schedule/schedule
@@ -5498,6 +5504,9 @@ importers:
 
   packages/client/ui-sidebar-documentpreview:
     dependencies:
+      '@deepseek-ai/dsh-report-generate':
+        specifier: workspace:*
+        version: link:../../document/report-generate
       '@deepseek-ai/schemastery':
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
@@ -7422,6 +7431,37 @@ importers:
       '@deepseek-ai/dsh-session':
         specifier: workspace:*
         version: link:../../core/session
+
+  packages/document/report-generate:
+    dependencies:
+      '@deepseek-ai/dsh-thermal-analyze':
+        specifier: workspace:*
+        version: link:../thermal-analyze
+      '@deepseek-ai/dsh-typert-protocol':
+        specifier: workspace:*
+        version: link:../../typert/protocol
+      '@deepseek-ai/schemastery':
+        specifier: link:../../../vendor/schemastery
+        version: link:../../../vendor/schemastery
+      '@wordinweb/agent':
+        specifier: link:../../../../wordinweb/packages/agent
+        version: link:../../../../wordinweb/packages/agent
+      '@wordinweb/core':
+        specifier: link:../../../../wordinweb/packages/core
+        version: link:../../../../wordinweb/packages/core
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:~
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/cordis-plugin-include':
+        specifier: workspace:~
+        version: link:../../../vendor/include
+      '@deepseek-ai/cordis-plugin-loader':
+        specifier: workspace:~
+        version: link:../../../vendor/loader
+      '@deepseek-ai/dsh-api-workspace-files':
+        specifier: workspace:*
+        version: link:../../api/workspace-files
 
   packages/document/thermal-analyze:
     dependencies:

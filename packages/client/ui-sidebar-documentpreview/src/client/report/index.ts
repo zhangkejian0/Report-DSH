@@ -2,6 +2,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type { SessionRequestId } from '@deepseek-ai/dsh-api-remotes/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
+import type {} from '@deepseek-ai/dsh-report-generate/remote'
 import { sessionFileAddress } from '@deepseek-ai/dsh-util-workspace-path'
 import { editAddressFor } from '../wordinweb/edit-address.ts'
 import { editSessionFor, markEditSessionSeeded, recordEditSession } from '../wordinweb/edit-sessions.ts'
@@ -49,7 +50,7 @@ export function apply(ctx: Context): void {
     name: 'sidebar.right.pane.tab', key: REPORT_TEMPLATES_ID, locale: 'sidebarReport',
   }, TemplateLibraryTab)), 'document-report: library tab')
   ctx.inject(
-    ['remote', 'remote.workspaceFiles', 'remote.session', 'sessions', 'workspaces', 'sidebarRight', 'uiWorkspace'],
+    ['remote', 'remote.workspaceFiles', 'remote.session', 'remote.reportGenerate', 'sessions', 'workspaces', 'sidebarRight', 'uiWorkspace'],
     (scope) => {
       const write: GenerationDeps['write'] = async (sessionId, path, base64, signal) =>
         expectOk(await scope.remote.workspaceFiles.writeBytes(sessionId, path, base64, signal)).absolutePath
@@ -74,6 +75,8 @@ export function apply(ctx: Context): void {
             content: [{ type: 'text', text }],
           }, signal))
         },
+        generateFast: async (sessionId, request, signal) =>
+          expectOk(await scope.remote.reportGenerate.generate(sessionId, request, signal)),
         createSession: async (cwd, signal) => {
           signal.throwIfAborted()
           // A `cwd` create publishes a Session the Host leaves Ungrouped; naming

@@ -1,0 +1,13 @@
+# Bilingual-pair consistency record for report-generate.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/subsystems/report-generate.md
+/report-generation:
+  en: 8a746c311abafe42
+  zh: 0a2d10ae62f1c1f3
+/report-generation/ownership:
+  en: e7c0f774f857f498
+  zh: 160d7d19b9df4e37
+/report-generation/requests-and-results:
+  en: 62b34ad8a6595714
+  zh: 019ee0004addc6c4

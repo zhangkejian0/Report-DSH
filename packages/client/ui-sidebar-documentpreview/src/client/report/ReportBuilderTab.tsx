@@ -1,6 +1,7 @@
 /** The report wizard hosted as its own right-Sidebar tab. */
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+import type { TranslateNS } from '@deepseek-ai/dsh-client-locale/client'
 import type { ThermalAnalysis } from '@deepseek-ai/dsh-thermal-analyze/types'
 import type { WorkspaceDirectoryEntry } from '@deepseek-ai/dsh-api-workspace-files/types'
 import { IconRefreshOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
@@ -8,8 +9,9 @@ import { analyzeBridge } from '../thermal/analyze-bridge.ts'
 import { REPORT_TEMPLATES_DIR, REPORTS_DIR, defaultReportName, isValidReportName } from './definition.ts'
 import { reportBridge } from './report-bridge.ts'
 import { generationBridge } from './generation-bridge.ts'
-import { startGeneration } from './generate.ts'
+import { startGeneration, type GenerationMode } from './generate.ts'
 import { sampleTemplateFiles } from './sample-template.ts'
+import type { SidebarReportKey } from './locales.ts'
 import type {} from './locales.ts'
 import css from './ReportBuilderTab.module.css'
 
@@ -47,6 +49,39 @@ interface AnalyzedRow extends ImageRow {
   readonly analysis: ThermalAnalysis
 }
 
+/** Engine refusal reasons with copy of their own. */
+const REASON_KEYS: Readonly<Record<string, SidebarReportKey>> = {
+  'analyzer-unavailable': 'reason.analyzer-unavailable',
+  'no-image-loop': 'reason.no-image-loop',
+  'template-markers': 'reason.template-markers',
+  'unknown-token': 'reason.unknown-token',
+  'template-invalid': 'reason.template-invalid',
+  'template-too-large': 'reason.template-too-large',
+  'too-many-images': 'reason.too-many-images',
+  'analysis-failed': 'reason.analysis-failed',
+  'residue': 'reason.residue',
+}
+
+/**
+ * Localize one generation failure: the Host engine's refusal reasons carry
+ * their own guidance; everything else keeps its message.
+ * @param cause - the thrown failure.
+ * @param mode - which engine ran.
+ * @param t - the wizard's translate.
+ * @returns the line the wizard shows.
+ */
+function messageFor(cause: unknown, mode: GenerationMode, t: TranslateNS<'sidebarReport'>): string {
+  const fallback = cause instanceof Error ? cause.message : String(cause)
+  if (mode !== 'fast') return fallback
+  if (typeof cause === 'object' && cause !== null && 'code' in cause && cause.code === 'report-generate/failed') {
+    const details = (cause as { readonly details?: { readonly reason?: unknown } }).details
+    const key = typeof details?.reason === 'string' ? REASON_KEYS[details.reason] : undefined
+    if (key !== undefined) return t(key)
+    return t('error.generateFast', { message: fallback })
+  }
+  return fallback
+}
+
 /**
  * Collect the two structural inputs of one report — template and thermal
  * images — with per-image preflight analysis, then dispatch the generation
@@ -79,6 +114,10 @@ export function ReportBuilderTab({ useTabInfo, sessionId, useSessions, t }: Repo
   const [dirError, setDirError] = useState<string>()
   const [rows, setRows] = useState<readonly ImageRow[]>([])
   const [reportName, setReportName] = useState('')
+  const [mode, setMode] = useState<GenerationMode>('fast')
+  const [company, setCompany] = useState('')
+  const [inspector, setInspector] = useState('')
+  const [device, setDevice] = useState('')
   const [phase, setPhase] = useState<'collecting' | 'dispatching'>('collecting')
   const [dispatchError, setDispatchError] = useState<string>()
 
@@ -257,18 +296,24 @@ export function ReportBuilderTab({ useTabInfo, sessionId, useSessions, t }: Repo
     }
     setPhase('dispatching')
     setDispatchError(undefined)
+    const fields: { company?: string; inspector?: string; device?: string } = {}
+    if (company.trim() !== '') fields.company = company.trim()
+    if (inspector.trim() !== '') fields.inspector = inspector.trim()
+    if (device.trim() !== '') fields.device = device.trim()
     void startGeneration({
       hostSessionId: sessionId,
+      mode,
       adoptHost: blank === true,
       workspaceRoot: cwd,
       templatePath: chosenTemplate,
       reportName: name,
       images: analyzedOk.map(row => ({ path: row.path, analysis: row.analysis })),
+      ...(mode === 'fast' ? { fields } : {}),
     }, deps, tab.signal).then(() => {
       tab.actions.close()
     }, (cause: unknown) => {
       setPhase('collecting')
-      setDispatchError(cause instanceof Error ? cause.message : String(cause))
+      setDispatchError(messageFor(cause, mode, t))
     })
   }
 
@@ -400,6 +445,41 @@ export function ReportBuilderTab({ useTabInfo, sessionId, useSessions, t }: Repo
         <p className={css.location}>
           {t('output.location')}：{REPORTS_DIR}/{nameValid ? name : '…'}/
         </p>
+        <div className={css.modeRow} role="radiogroup" aria-label={t('mode.label')}>
+          <button
+            type="button" role="radio" aria-checked={mode === 'fast'}
+            className={mode === 'fast' ? `${css.modeButton} ${css.modeButtonActive}` : css.modeButton}
+            onClick={() => { setMode('fast') }}
+          >
+            {t('mode.fast')}
+          </button>
+          <button
+            type="button" role="radio" aria-checked={mode === 'ai'}
+            className={mode === 'ai' ? `${css.modeButton} ${css.modeButtonActive}` : css.modeButton}
+            onClick={() => { setMode('ai') }}
+          >
+            {t('mode.ai')}
+          </button>
+        </div>
+        {mode === 'fast' && (
+          <>
+            <label className={css.field}>
+              <span>{t('fields.company')}</span>
+              <input value={company} placeholder={t('fields.optional')} disabled={phase === 'dispatching'}
+                onChange={(event) => { setCompany(event.target.value) }} />
+            </label>
+            <label className={css.field}>
+              <span>{t('fields.inspector')}</span>
+              <input value={inspector} placeholder={t('fields.optional')} disabled={phase === 'dispatching'}
+                onChange={(event) => { setInspector(event.target.value) }} />
+            </label>
+            <label className={css.field}>
+              <span>{t('fields.device')}</span>
+              <input value={device} placeholder={t('fields.optional')} disabled={phase === 'dispatching'}
+                onChange={(event) => { setDevice(event.target.value) }} />
+            </label>
+          </>
+        )}
         {!nameValid && (templatePath !== undefined || reportName.trim() !== '') && (
           <p className={css.note}>{t('output.invalidName')}</p>
         )}
@@ -416,7 +496,7 @@ export function ReportBuilderTab({ useTabInfo, sessionId, useSessions, t }: Repo
           disabled={!canGenerate || phase === 'dispatching'}
           onClick={generate}
         >
-          {phase === 'dispatching' ? t('generating') : t('generate')}
+          {phase === 'dispatching' ? (mode === 'fast' ? t('generatingFast') : t('generating')) : t('generate')}
         </button>
       </section>
     </div>

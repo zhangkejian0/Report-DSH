@@ -68,6 +68,7 @@ External packages installed for runtime use or distributed inside the prebuilt b
 | [`@trycua/cua-driver`](https://github.com/trycua/cua) | MIT |
 | [`@vscode/ripgrep`](https://github.com/microsoft/vscode-ripgrep) | MIT |
 | [`@wordinweb/agent`](https://github.com/theRealestAEP/wordinweb) | MIT |
+| [`@wordinweb/core`](https://github.com/theRealestAEP/wordinweb) | MIT |
 | [`@xterm/addon-fit`](https://github.com/xtermjs/xterm.js/tree/master/addons/addon-fit) | MIT |
 | [`@xterm/addon-serialize`](https://github.com/xtermjs/xterm.js/tree/master/addons/addon-serialize) | MIT |
 | [`@xterm/headless`](https://github.com/xtermjs/xterm.js) | MIT |

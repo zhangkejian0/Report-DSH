@@ -261,6 +261,7 @@
     { "path": "./packages/client/ui-settings-general/tsconfig.host.json" },
     { "path": "./packages/document/office-to-pdf" },
     { "path": "./packages/document/thermal-analyze" },
+    { "path": "./packages/document/report-generate" },
     { "path": "./packages/document/tool-wordinweb" },
 
     { "path": "./packages/api/account-controller" },

@@ -10,6 +10,7 @@ import accountRemote from '@deepseek-ai/dsh-api-account-controller/remote'
 import settingsControllerRemote from '@deepseek-ai/dsh-api-settings-controller/remote'
 import officeToPdfRemote from '@deepseek-ai/dsh-office-to-pdf/remote'
 import thermalAnalyzeRemote from '@deepseek-ai/dsh-thermal-analyze/remote'
+import reportGenerateRemote from '@deepseek-ai/dsh-report-generate/remote'
 import goalsRemote from '@deepseek-ai/dsh-goal/remote'
 import scheduleRemote from '@deepseek-ai/dsh-schedule/remote'
 import llmRemote from '@deepseek-ai/dsh-llm/remote'
@@ -185,7 +186,7 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
       pluginInventoryRemote, pluginManagerRemote, pluginRegistryProbeRemote, messageFeedbackRemote, sessionFeedbackRemote,
       fileUploadsRemote, sessionReferencesRemote,
       permissionPresetsRemote, subagentsRemote, sessionRemote, jobRemote, workspaceRemote, workspaceFilesRemote, terminalRemote,
-      officeToPdfRemote, thermalAnalyzeRemote, userQuestionsRemote,
+      officeToPdfRemote, thermalAnalyzeRemote, reportGenerateRemote, userQuestionsRemote,
     ]) {
       disposers.push(await ctx.remote.$mount(contribution))
     }
