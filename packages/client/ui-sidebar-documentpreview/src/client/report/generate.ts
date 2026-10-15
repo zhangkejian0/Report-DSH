@@ -56,6 +56,8 @@ export interface GenerationDeps {
   readonly prompt: (sessionId: SessionId, text: string, signal: AbortSignal) => Promise<unknown>
   /** Run one deterministic generation on the Host engine. */
   readonly generateFast: (sessionId: SessionId, request: ReportGenerateRequest, signal: AbortSignal) => Promise<ReportGenerateResult>
+  /** Whether one Session's Sidebar already holds the document's edit tab. */
+  readonly editTabIn: (sessionId: SessionId, docxPath: string) => boolean
   /** Create one Session bound to a workspace directory. */
   readonly createSession: (cwd: string, signal: AbortSignal) => Promise<SessionId>
   /** Move the main view onto one Session. */
@@ -102,12 +104,13 @@ const sleep = (ms: number, signal: AbortSignal): Promise<void> =>
 
 /**
  * Run one generation to its handoff point. The fast mode returns after one
- * Host call, with the finished document already seated in its edit tab. The
- * AI mode returns once every asset is on disk and the task book is queued, so
- * a failure there is fully reportable by the wizard; the edit-tab seeding that
- * follows the agent's first save runs detached: it outlives the wizard tab and
- * claims nothing on timeout, leaving the files tree as the fallback door to
- * the finished report.
+ * Host call with the edit Session recorded; the caller seats the finished
+ * document's edit tab after closing the wizard tab. The AI mode returns once
+ * every asset is on disk and the task book is queued, so a failure there is
+ * fully reportable by the wizard; the edit-tab seeding that follows the
+ * agent's first save runs detached: it outlives the wizard tab and claims
+ * nothing on timeout, leaving the files tree as the fallback door to the
+ * finished report.
  * @param request - the wizard's collected inputs and host Session.
  * @param deps - plugin-lifetime service closures.
  * @param signal - cancellation for the awaited phase only.
@@ -125,9 +128,10 @@ export async function startGeneration(
   const assetsDir = `${outputDir}/assets`
   const absoluteOutput = `${root}/${outputPath}`
 
-  // Fast mode: one Host round trip; the finished file seats its edit tab in
-  // this Session immediately, with no conversation to step aside into. The
-  // request names only paths — the Host re-measures every image itself.
+  // Fast mode: one Host round trip, then the finished document's edit tab
+  // seats through the detached retry below — the pane's tab churn from the
+  // wizard tab closing can drop the first placement, so seating repeats until
+  // the tab is present, and the Session-header seed remains the backstop.
   if (request.mode === 'fast') {
     const result = await deps.generateFast(hostSessionId, {
       templatePath,
@@ -136,7 +140,28 @@ export async function startGeneration(
       fields: { title: reportName, ...request.fields },
     }, signal)
     deps.recordEditSession(hostSessionId, result.absolutePath)
-    deps.openEditTab(hostSessionId, outputPath)
+
+    const seatLifetime = new AbortController()
+    void (async () => {
+      try {
+        const deadline = Date.now() + SEED_DEADLINE_MS
+        for (;;) {
+          if (!deps.editTabIn(hostSessionId, outputPath)) deps.openEditTab(hostSessionId, outputPath)
+          if (deps.editTabIn(hostSessionId, outputPath)) {
+            deps.markSeeded(hostSessionId)
+            return
+          }
+          if (Date.now() >= deadline) {
+            console.error('report: fast edit-tab seating gave up; the files tree still reaches the report')
+            return
+          }
+          await sleep(SEED_POLL_MS, seatLifetime.signal)
+        }
+      } catch (cause) {
+        console.error('report: fast edit-tab seating aborted:', cause)
+      }
+    })()
+
     return { sessionId: hostSessionId, outputPath }
   }
 

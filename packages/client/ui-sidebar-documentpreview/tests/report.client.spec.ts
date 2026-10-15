@@ -90,6 +90,7 @@ describe('startGeneration', () => {
       generateFast: vi.fn(async (_sessionId: SessionId, request: { imagePaths: readonly string[] }) => ({
         absolutePath: 'C:/ws/报告/demo/demo.docx', bytes: 1234, images: request.imagePaths.length,
       })),
+      editTabIn: vi.fn(() => true),
       createSession: vi.fn(async () => 's-new' as SessionId),
       navigate: vi.fn(),
       openEditTab: vi.fn(),
@@ -153,7 +154,7 @@ describe('startGeneration', () => {
     expect(vi.mocked(dep.prompt)).not.toHaveBeenCalled()
   })
 
-  it('fast mode takes one Host call and seats the edit tab in the host Session', async () => {
+  it('fast mode takes one Host call and seats the edit tab once present', async () => {
     const dep = deps()
     const outcome = await startGeneration(request({ mode: 'fast' }), dep, signal)
     expect(outcome).toEqual({ sessionId: host, outputPath: '报告/demo/demo.docx' })
@@ -165,7 +166,10 @@ describe('startGeneration', () => {
     expect(dep.write).not.toHaveBeenCalled()
     expect(dep.createSession).not.toHaveBeenCalled()
     expect(dep.recordEditSession).toHaveBeenCalledWith(host, 'C:/ws/报告/demo/demo.docx')
-    expect(dep.openEditTab).toHaveBeenCalledWith(host, '报告/demo/demo.docx')
+    // Seating retries in the background; with the tab already present it claims
+    // the seed without opening anything more.
+    expect(dep.openEditTab).not.toHaveBeenCalled()
+    await vi.waitFor(() => { expect(dep.markSeeded).toHaveBeenCalledWith(host) })
   })
 
   it('fast mode reports the engine failure and seats nothing', async () => {

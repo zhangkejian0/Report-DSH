@@ -4,7 +4,7 @@ import type { SessionRequestId } from '@deepseek-ai/dsh-api-remotes/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
 import type {} from '@deepseek-ai/dsh-report-generate/remote'
 import { sessionFileAddress } from '@deepseek-ai/dsh-util-workspace-path'
-import { editAddressFor } from '../wordinweb/edit-address.ts'
+import { editAddressFor, parseEditAddress } from '../wordinweb/edit-address.ts'
 import { editSessionFor, markEditSessionSeeded, recordEditSession } from '../wordinweb/edit-sessions.ts'
 import { owningWorkspaceId } from '../wordinweb/index.ts'
 import {
@@ -77,6 +77,11 @@ export function apply(ctx: Context): void {
         },
         generateFast: async (sessionId, request, signal) =>
           expectOk(await scope.remote.reportGenerate.generate(sessionId, request, signal)),
+        editTabIn: (sessionId, docxPath) => {
+          const fileAddress = sessionFileAddress(sessionId, docxPath)
+          return scope.sidebarRight.tabsIn(sessionId)
+            .some(tab => parseEditAddress(tab.contentId) === fileAddress)
+        },
         createSession: async (cwd, signal) => {
           signal.throwIfAborted()
           // A `cwd` create publishes a Session the Host leaves Ungrouped; naming

@@ -77,8 +77,12 @@ export function WordinwebEditTab({ useTabInfo, t }: WordinwebEditTabProps): Reac
     if (ownerSession === undefined || path === undefined) return
     // The tab an edit Session's own Sidebar shows hosts its Session already:
     // creating another one for the same document would fork the conversation
-    // the operator just opened.
-    if (editSessionPathOf(ownerSession) === path) return
+    // the operator just opened. Records hold absolute paths while this tab's
+    // address names the workspace-relative one, so the owner check matches by
+    // suffix — the relative path's own segments end the recorded path.
+    const recordedPath = editSessionPathOf(ownerSession)
+    const relativePath = normalizeSeparators(path)
+    if (recordedPath === relativePath || recordedPath?.endsWith(`/${relativePath}`)) return
     const create = bridge.create
     const stat = bridge.stat
     const prompt = bridge.prompt
@@ -106,6 +110,10 @@ export function WordinwebEditTab({ useTabInfo, t }: WordinwebEditTabProps): Reac
           await prompt(sessionId, t('sessionInstruction', { path }), tab.signal)
         }
         if (closed.settled) return
+        // The recorded edit Session IS this tab's host: this tab is that
+        // Session's own editor (the report wizard's fast generation seats it
+        // directly), so there is no other editor to step aside for.
+        if (sessionId === ownerSession) return
         setStatus(t('sessionReady'))
         // The edit Session takes over: the main view moves onto it, its own
         // Sidebar shows the seeded document tab, and this preview-side host
