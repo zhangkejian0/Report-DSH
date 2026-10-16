@@ -114,7 +114,8 @@ static class ThermalAnalyzeJson
         Num("count", pts.Length);
         json.Append("},");
 
-        // 内置测量标记
+        // 内置测量标记（全部类型；矩形坐标 rect，多边形/折线附 points，点附 point，
+        // Spot 的 max/min/avg 均为该点值，rect 为 1x1 外接框，供 UI 表格与框定位兼容）
         json.Append("\"markers\":[");
         int markerCount = 0;
         try
@@ -122,20 +123,69 @@ static class ThermalAnalyzeJson
             for (int i = 0; i < file.Markers.Count; i++)
             {
                 IMarker m = file.Markers[i];
-                IMarkerRectangle r = m as IMarkerRectangle;
-                if (r == null) continue;
                 if (markerCount > 0) json.Append(',');
                 markerCount++;
                 json.Append('{');
                 Str("name", m.Name); json.Append(',');
                 Str("type", m.Type.ToString()); json.Append(',');
-                json.Append("\"rect\":[" + r.Rectangle.X + "," + r.Rectangle.Y + ","
-                    + r.Rectangle.Width + "," + r.Rectangle.Height + "],");
-                Num("max", r.Max - 273.15f); json.Append(',');
-                Num("min", r.Min - 273.15f); json.Append(',');
-                Num("avg", r.Avg - 273.15f); json.Append(',');
-                json.Append("\"hotSpot\":[" + r.HotSpot.X + "," + r.HotSpot.Y + "],");
-                json.Append("\"coldSpot\":[" + r.ColdSpot.X + "," + r.ColdSpot.Y + "]");
+
+                IMarkerSpot sp = m as IMarkerSpot;
+                IMarkerRectangle rc = m as IMarkerRectangle;
+                IMarkerEllipse el = m as IMarkerEllipse;
+                IMarkerPolygon pg = m as IMarkerPolygon;
+                IMarkerPolyline pl = m as IMarkerPolyline;
+
+                if (sp != null)
+                {
+                    json.Append("\"point\":[" + sp.Point.X + "," + sp.Point.Y + "],");
+                    json.Append("\"rect\":[" + sp.Point.X + "," + sp.Point.Y + ",1,1],");
+                    double v = sp.Value - 273.15f;
+                    Num("max", v); json.Append(',');
+                    Num("min", v); json.Append(',');
+                    Num("avg", v); json.Append(',');
+                    json.Append("\"hotSpot\":[" + sp.Point.X + "," + sp.Point.Y + "],");
+                    json.Append("\"coldSpot\":[" + sp.Point.X + "," + sp.Point.Y + "]");
+                }
+                else if (rc != null || el != null)
+                {
+                    Rectangle r = rc != null ? rc.Rectangle : el.Rectangle;
+                    json.Append("\"rect\":[" + r.X + "," + r.Y + "," + r.Width + "," + r.Height + "],");
+                    double maxV = (rc != null ? rc.Max : el.Max) - 273.15f;
+                    double minV = (rc != null ? rc.Min : el.Min) - 273.15f;
+                    double av = (rc != null ? rc.Avg : el.Avg) - 273.15f;
+                    Point hot = rc != null ? rc.HotSpot : el.HotSpot;
+                    Point cold = rc != null ? rc.ColdSpot : el.ColdSpot;
+                    Num("max", maxV); json.Append(',');
+                    Num("min", minV); json.Append(',');
+                    Num("avg", av); json.Append(',');
+                    json.Append("\"hotSpot\":[" + hot.X + "," + hot.Y + "],");
+                    json.Append("\"coldSpot\":[" + cold.X + "," + cold.Y + "]");
+                }
+                else if (pg != null || pl != null)
+                {
+                    Point[] verts = pg != null ? pg.Points : pl.Points;
+                    int minX = int.MaxValue, minY = int.MaxValue, maxX = int.MinValue, maxY = int.MinValue;
+                    foreach (Point p in verts)
+                    {
+                        if (p.X < minX) minX = p.X;
+                        if (p.X > maxX) maxX = p.X;
+                        if (p.Y < minY) minY = p.Y;
+                        if (p.Y > maxY) maxY = p.Y;
+                    }
+                    json.Append("\"points\":" + PointsJson(verts)); json.Append(',');
+                    json.Append("\"rect\":[" + minX + "," + minY + ","
+                        + Math.Max(1, maxX - minX + 1) + "," + Math.Max(1, maxY - minY + 1) + "],");
+                    double maxV = (pg != null ? pg.Max : pl.Max) - 273.15f;
+                    double minV = (pg != null ? pg.Min : pl.Min) - 273.15f;
+                    double av = (pg != null ? pg.Avg : pl.Avg) - 273.15f;
+                    Point hot = pg != null ? pg.HotSpot : pl.HotSpot;
+                    Point cold = pg != null ? pg.ColdSpot : pl.ColdSpot;
+                    Num("max", maxV); json.Append(',');
+                    Num("min", minV); json.Append(',');
+                    Num("avg", av); json.Append(',');
+                    json.Append("\"hotSpot\":[" + hot.X + "," + hot.Y + "],");
+                    json.Append("\"coldSpot\":[" + cold.X + "," + cold.Y + "]");
+                }
                 json.Append('}');
             }
         }
@@ -209,6 +259,17 @@ static class ThermalAnalyzeJson
             img.Dispose();
             return Convert.ToBase64String(ms.ToArray());
         }
+    }
+
+    static string PointsJson(Point[] points)
+    {
+        var sb = new StringBuilder("[");
+        for (int i = 0; i < points.Length; i++)
+        {
+            if (i > 0) sb.Append(',');
+            sb.Append("[" + points[i].X + "," + points[i].Y + "]");
+        }
+        return sb.Append(']').ToString();
     }
 
     static string TryS(Func<string> get) { try { return get() ?? ""; } catch (Exception) { return ""; } }
