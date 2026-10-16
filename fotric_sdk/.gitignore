@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+bin/
+obj/
+*.dll
+*.exe
+*.pdb
+
+# Output files
+nodejs-sdk/output/
+*.csv
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+
+# Test outputs
+*.bmp
+*.ppm
+*.rgb
+*.raw
+
+# Trae skills (optional - uncomment if you don't want to track)
+# .trae/
