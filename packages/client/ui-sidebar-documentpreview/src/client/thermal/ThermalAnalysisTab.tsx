@@ -44,7 +44,7 @@ function reasonOf(error: unknown): unknown {
   if (typeof error === 'object' && error !== null && 'details' in error) {
     const details = (error as { details?: unknown }).details
     if (typeof details === 'object' && details !== null && 'reason' in details) {
-      return (details as { reason: unknown }).reason
+      return (details).reason
     }
   }
   return undefined
@@ -120,6 +120,8 @@ export function ThermalAnalysisTab({ useTabInfo, t }: ThermalAnalysisTabProps): 
 
   const { file, camera, params, gain, stats, markers, frame, grid } = report
   const fieldMarkers = markers.filter(marker => marker.name !== 'global')
+  const vectorMarkers = fieldMarkers.filter(marker =>
+    (marker.type === 'Polygon' || marker.type === 'Polyline') && marker.points !== undefined)
   const tableMarkers = markers
 
   /** Hover readout over the rendered field, in file pixel coordinates. */
@@ -151,7 +153,7 @@ export function ThermalAnalysisTab({ useTabInfo, t }: ThermalAnalysisTabProps): 
             className={css.reportButton}
             title={t('reportHint')}
             onClick={() => {
-              tab.actions.openTab(REPORT_BUILDER_KIND, { params: { preselectImage: target?.path } })
+              tab.actions.openTab(REPORT_BUILDER_KIND, { params: { preselectImage: target.path } })
             }}
           >
             {t('report')}
@@ -181,20 +183,72 @@ export function ThermalAnalysisTab({ useTabInfo, t }: ThermalAnalysisTabProps): 
         <figure className={css.fieldCard}>
           <div className={css.field} onMouseMove={onFieldMove} onMouseLeave={() => { setHover(undefined) }}>
             <img className={css.fieldImage} src={thermalUrl} alt={name} draggable={false} />
-            {fieldMarkers.map(marker => (
-              <span
-                key={marker.name}
-                className={css.markerBox}
-                style={{
-                  left: `${marker.rect[0] / file.width * 100}%`,
-                  top: `${marker.rect[1] / file.height * 100}%`,
-                  width: `${marker.rect[2] / file.width * 100}%`,
-                  height: `${marker.rect[3] / file.height * 100}%`,
-                  borderColor: colorOfMarker(markers, marker),
-                }}
-                title={marker.name}
-              />
-            ))}
+            {vectorMarkers.length > 0 && (
+              <svg
+                className={css.vectorOverlay}
+                viewBox={`0 0 ${file.width} ${file.height}`}
+                preserveAspectRatio="none"
+              >
+                {vectorMarkers.map((marker) => {
+                  const points = (marker.points ?? [])
+                    .map(([x, y]) => `${x},${y}`)
+                    .join(' ')
+                  const color = colorOfMarker(markers, marker)
+                  return marker.type === 'Polygon' ? (
+                    <polygon
+                      key={marker.name}
+                      points={points}
+                      fill="none"
+                      stroke={color}
+                      strokeWidth={2}
+                      vectorEffect="non-scaling-stroke"
+                    />
+                  ) : (
+                    <polyline
+                      key={marker.name}
+                      points={points}
+                      fill="none"
+                      stroke={color}
+                      strokeWidth={2}
+                      strokeLinejoin="round"
+                      vectorEffect="non-scaling-stroke"
+                    />
+                  )
+                })}
+              </svg>
+            )}
+            {fieldMarkers.map((marker) => {
+              const color = colorOfMarker(markers, marker)
+              if (marker.type === 'Spot' && marker.point !== undefined) {
+                return (
+                  <span
+                    key={marker.name}
+                    className={css.markerSpot}
+                    style={{
+                      left: `${marker.point[0] / file.width * 100}%`,
+                      top: `${marker.point[1] / file.height * 100}%`,
+                      background: color,
+                    }}
+                    title={marker.name}
+                  />
+                )
+              }
+              return (
+                <span
+                  key={marker.name}
+                  className={css.markerBox}
+                  style={{
+                    left: `${marker.rect[0] / file.width * 100}%`,
+                    top: `${marker.rect[1] / file.height * 100}%`,
+                    width: `${marker.rect[2] / file.width * 100}%`,
+                    height: `${marker.rect[3] / file.height * 100}%`,
+                    borderColor: color,
+                    ...(marker.type === 'Ellipse' ? { borderRadius: '50%' } : {}),
+                  }}
+                  title={marker.name}
+                />
+              )
+            })}
             <span
               className={css.hotSpot}
               style={{ left: `${stats.maxAt[0] / file.width * 100}%`, top: `${stats.maxAt[1] / file.height * 100}%` }}

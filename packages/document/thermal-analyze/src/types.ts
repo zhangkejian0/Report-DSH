@@ -50,12 +50,17 @@ export interface ThermalStats {
   readonly count: number
 }
 
-/** One measurement rectangle the camera or an operator drew into the file. */
+/** One measurement marker the camera, an operator, or an annotation wrote into the file. */
 export interface ThermalMarker {
   readonly name: string
+  /** Marker shape: `Rectangle` | `Ellipse` | `Polygon` | `Polyline` | `Spot`. */
   readonly type: string
-  /** `[x, y, width, height]` in file pixel coordinates. */
+  /** `[x, y, width, height]` bounding box in file pixel coordinates. */
   readonly rect: readonly [number, number, number, number]
+  /** `[x, y]` in file pixel coordinates; `Spot` markers only. */
+  readonly point?: readonly [number, number]
+  /** Vertices `[x, y]` in file pixel coordinates; `Polygon`/`Polyline` markers only. */
+  readonly points?: readonly (readonly [number, number])[]
   readonly max: number
   readonly min: number
   readonly avg: number
