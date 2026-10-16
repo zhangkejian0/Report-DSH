@@ -33,7 +33,9 @@ Browsers request generation through the `reportGenerate.generate` Remote method 
 | `imageWidthPx` | no | `460` | Insertion width of thermal images; height keeps the natural ratio. |
 | `maxImages` | no | `500` | Maximum images one generation may expand. |
 
-The token vocabulary and loop conventions live in the template note the report wizard seeds (`报告模版/模版说明.md`): `{{report_title}}`-style header tokens, whole-report aggregates such as `{{overall_max_temp}}`, per-image tokens such as `{{t_max}}`, and one `{{#each_image}}`…`{{/each_image}}` region per repeating section — a bracketed block range in the body, or both markers inside one table row for a per-image row.
+The token vocabulary and loop conventions live in the template note the report wizard seeds (`报告模版/模版说明.md`): `{{report_title}}`-style header tokens, whole-report aggregates such as `{{overall_max_temp}}`, per-image tokens such as `{{t_max}}`, and one `{{#each_image}}`…`{{/each_image}}` region per repeating section — a bracketed block range in the body, or both markers inside one table row for a per-image row; a `{{#each_marker}}` table row repeats once per marker of every image (the flattened marker detail table).
+
+Fields are configurable per template: a sidecar `<template>.tokens.json` beside it adds custom tokens (Chinese names included), rebinds built-ins to other analyzer paths and formats, and declares generation-time inputs, which the wizard renders as its form. Three bindings cover value (`path` plus a named `format`), author input (`input`), and derived text (`template` referencing other tokens); without any configuration, escape-hatch tokens such as `{{analysis.params.distance|number:1}}` address the analyzer JSON directly, and templates without a sidecar behave exactly as the built-in vocabulary defines.
 
 <a id="understand-the-implementation"></a>
 ## Understand the implementation
@@ -54,7 +56,7 @@ None; generation constructs and modifies no model requests.
 <a id="known-limitations-and-deferred-work"></a>
 
 - The report wizard's AI path remains the fallback for templates without explicit loop markers; the deterministic engine refuses them with `no-image-loop`.
-- `{{marker_table}}` renders as inline text; a composed table form is deferred.
+- `{{marker_table}}` renders as inline text; a composed table form is deferred (a `{{#each_marker}}` row covers the tabular form).
 - The engine projects through one 2000-block window; beyond it a run fails with `template-too-large` rather than paging.
 - Table-row loops require both loop markers inside one table row; markers split across rows are refused.
 

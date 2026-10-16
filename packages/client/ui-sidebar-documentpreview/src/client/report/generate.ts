@@ -16,12 +16,8 @@ export interface GenerationImage {
   readonly analysis: ThermalAnalysis
 }
 
-/** Author-supplied report header fields; the fast engine substitutes them. */
-export interface GenerationFields {
-  readonly company?: string
-  readonly inspector?: string
-  readonly device?: string
-}
+/** Author-supplied values keyed by token text, as the template declares its inputs. */
+export type GenerationFields = Readonly<Record<string, string>>
 
 /** How one generation runs. */
 export type GenerationMode = 'fast' | 'ai'
@@ -137,7 +133,7 @@ export async function startGeneration(
       templatePath,
       outputPath,
       imagePaths: images.map(image => image.path),
-      fields: { title: reportName, ...request.fields },
+      ...(request.fields === undefined ? {} : { fields: request.fields }),
     }, signal)
     deps.recordEditSession(hostSessionId, result.absolutePath)
 

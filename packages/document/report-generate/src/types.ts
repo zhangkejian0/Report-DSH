@@ -4,6 +4,7 @@
 export type ReportGenerateReason =
   | 'analyzer-unavailable'
   | 'template-invalid'
+  | 'fields-invalid'
   | 'template-markers'
   | 'template-too-large'
   | 'no-image-loop'
@@ -21,17 +22,11 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
   }
 }
 
-/** Author-supplied report fields; absent fields substitute as empty text. */
-export interface ReportFields {
-  /** Report title; the wizard prefills the report name. */
-  readonly title?: string
-  /** Inspecting company. */
-  readonly company?: string
-  /** Inspector name. */
-  readonly inspector?: string
-  /** Name of the device under inspection. */
-  readonly device?: string
-}
+/**
+ * Author-supplied values keyed by token text, as the template's field
+ * configuration declares its inputs; absent tokens substitute as empty.
+ */
+export type ReportFields = Readonly<Record<string, string>>
 
 /** Everything one deterministic generation needs, except the template bytes. */
 export interface ReportGenerateRequest {

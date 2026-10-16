@@ -15,53 +15,53 @@ export const SAMPLE_TEMPLATE_BASE64 = [
   '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',
-  'UJFwj2zQvOOmsoBDj5sXhxdQSwMEFAAAAAgAAEAhUPpcUPW4BAAAXBgAABEAAAB3b3JkL2RvY3Vt',
-  'ZW50LnhtbO1Z3XLbRBR+FY+4ps4faZKp05m0hHLBDEMKXHrW0toWSFrNavPXjGfcpsVpmjTp0IRA',
-  'QtJCS0MBkwxQWsfNy9Qru1d9Bc7uSo47OE4sFxp+ciHtrnS+/XZ1fL6zJ2fOTtlWbAJTzyROQus+',
-  '1aXFsKMTw3QyCe3Di6NvDmgxjyHHQBZxcEKbxp52dvjM5JBB9HEbOywGAI43NJnQsoy5Q/G4p2ex',
-  'jbxTxMUOPEsTaiMGXZqJTxJquJTo2PMA37biPV1d/XEbmY4WwNDjwJB02tTx+YCAAqHYQgzW4GVN',
-  '19MEwRQxpsXdlZf3qbyNsWkLxyaHJpCV0C6azMJaXDz4RA8HdYDEVIzG62byIlc65LlIh21wKfYw',
-  'ncDa8MwMxS6hLMkEWi4nzJg0BisB0ZrD2HhKGnZKo1r6ht9brc7+xGeX/G/z/m83/Pn7/Nb84XRa',
-  'oUWzUvPyxZXK08VoCDMzOrFd5Ey32sejKVRKJX5rLSoF0/FcrDNCOyPhf3Hf39iKSsJArKUztbKu',
-  'Fff5vQJfXqw+2Ik8P56A31hUBpW9h/zLbb55gy/9HtkTkI0pStrEwFZnPKrl1c55QN9E0Yk8zj/L',
-  'X1aOUd37vFYsRaVDIFgjy0rqxNGtcRG2o3Li13Zj4O02ymBAG3dYLhfj5TsqhvD1/RflBX5tm2+U',
-  '/I388x/W4N1wbhtNJRm23VzuRXnu5WEJJ8avgzkYVp7ebDQ0nbrhAn/yC/+60PAUTWSCp8/yVyLu',
-  'c2mhvs/+bsHP7zXFYSkruKnICo2PIfKCiA329oMEwsi0C8DGFFKBGV4YAfECnZQ94oZxWggZRG/o',
-  'epcSWp9sKFISRicWAU0bOX1u8PyIgrJwmkW3ThHGiB3dnpqZbAfTQ2w0DXyhU4CPogKIj9nwKVS3',
-  '/g3foaYhmhm4nyOW+qK93T1dau52hhVyCMjUDLQ+0wWMgEHwXjisq2vYCzxKIv7Zo7ysUdd6CyMq',
-  'XkmbFnS7R/vePj0YkgjgDjw/mC0lUeQGhTij8i8wDEkdIlGrhcreoya/DTnlP241MkD5j7/npe/+',
-  'LWtS0fGoNUn3a/DQNhbYlPqhsvMGRno2jO512YDtaJ4jRNry9hgxoTeSS7yR2+siA+LVavLgQ6mw',
-  'csyU4TpIGWTTIMV87jN/czlqyvDSt2vzfCICHcTonnYOREf4xjE4ixxEJCBfhWAsi+H8d1j69b+c',
-  '/3fkvK9/oJluh8OvTrcl4klThed3n1TXixFi3Ilcjb+yw/PlTtWt6dLaCd8dpg8dz1/XMnmaku0k',
-  'gtMYHKJOwt7AEe41743Z/Iz79+7E8RKyv3YnXnmS4d8p1Io71b2tWvGulFsb0U8xTTKUiq7eKlvx',
-  'ry7VHlxu0HAo7Yl6bVTUo/O841BbX4ekqvbzr/7azYjFvY0fVWW1ens3KJWo5a7s+IvFWuEhn9+u',
-  '3t7y55ZFASQs+PibG5X9dVWYq84/8gWHq5XyDl+6UsvPHlbu8KAMqbwjTQiUgz/AaUyhPC+ys8CP',
-  'cBqNW0yL0SHTSGj0XaNXBXY3M3ZJOV53T0+f9LwstN8agHbwwntIxGxIfmC8T70i04mDrspODvoi',
-  '1wl6ynlDgtBU5XZohP8YGP4DUEsDBBQAAAAIAABAIVD+8BXVogAAAHgBAAAcAAAAd29yZC9fcmVs',
-  'cy9kb2N1bWVudC54bWwucmVsc62QSwrCMBBArxJygE6r4EJMu3HTrXiBkE7aYvMhM4q9vYEiWujC',
-  'hcs3M7wHc2qebhIPTDQGr2RVlLKpTxecNOcBDWMkkS88KTkwxyMAmQGdpiJE9HljQ3KaM6YeojY3',
-  '3SPsyvIA6dsh107RdkqmtqukuM4Rf3EHa0eD52DuDj1vJIB4npCyUaceWcmFi+yRsJ3f/zNvQ2BM',
-  'n/zC1bsPq5/WL1BLAwQUAAAACAAAQCFQ5YCXUAECAADGBwAADwAAAHdvcmQvc3R5bGVzLnhtbL2U',
-  '627aMBTHXyXy9zUkEGCoadVuizZp6iatewCTHEg2x/ZsA2VPX9+SUBLUqyo+wPn73Pw7x5xf3tUk',
-  '2IKQFaMpis5GKACas6Ki6xT9vs0+zFEgFaYFJoxCivYg0eXF+W4h1Z6ADHQ4lYtdikql+CIMZV5C',
-  'jeUZ40D12YqJGittinW4Y6LgguUgpc5ekzAejaZhjSuKTMKC5Z9hhTdESWOKn8Kb3rJfGaNKBrsF',
-  'lnlVpeiKKyaRtssrKls7tP391/IWkxTFcaN8MqEHWugTu++Dcry1nNdRb/buOpXac42EY4HXAvPS',
-  'NFI4N43SWNbxW5GiG8OB2HtSXJtY24aXbXv/MsvKFbSBj5Rqk99WikAvt1Nt6iWWUPygQ1Up3KlG',
-  '/7VZqi6o68fysM1wnOvRGf4rBUJjnIyc85+8SZID1Ueero/z01ta15wRJhrvKJt8mX08nlgyMDGn',
-  'HUzsWYjaqx1TenjnJ4IaHttpTOPpczBVfUzJ9TSZjXuLPR9YbKu9FNNXwOblRz1MpTsIorfk9BeA',
-  '32h3d4kW2hL0v4Zu0VDrGEaxZ8g2ilQUvm9JU8YevHzbxgPb5rRXYoxPYvQV3wWjeaMdxvlJina0',
-  'T6EYZ7PkOukt43RgGa32SorjkxT9g3gXipEG11Fs3nOfYrM3j1KcjMynR3EyQNFqfYrNL3lxD1BL',
-  'AwQUAAAACAAAQCFQVptFc5IAAAC4AAAAEAAAAHdvcmQvZm9vdGVyMS54bWwVjssJwzAQRFsRKsBy',
-  'cshB2HItQl5/wPqwK6wEobpyT2VZXR4MwzxmWt7+EjcgnTHM8jGMcjFT0VtGwU0gXWZ55Jy0UuQO',
-  '8JaGmCBwt0X0NnPEXZWIa8LogOgMu7/UcxxfytszyG5LHdiRu1VTsg5mmRAI8AZpanXRJxs+rYnf',
-  'V9S62gytTYoXppPHTPYw+Zv5A1BLAQIUABQAAAAIAABAIVAE4Gyb6gAAAIoCAAATAAAAAAAAAAAA',
-  'AAAAAAAAAABbQ29udGVudF9UeXBlc10ueG1sUEsBAhQAFAAAAAgAAEAhUF8zlVKVAAAABwEAAAsA',
-  'AAAAAAAAAAAAAAAAGwEAAF9yZWxzLy5yZWxzUEsBAhQAFAAAAAgAAEAhUPpcUPW4BAAAXBgAABEA',
-  'AAAAAAAAAAAAAAAA2QEAAHdvcmQvZG9jdW1lbnQueG1sUEsBAhQAFAAAAAgAAEAhUP7wFdWiAAAA',
-  'eAEAABwAAAAAAAAAAAAAAAAAwAYAAHdvcmQvX3JlbHMvZG9jdW1lbnQueG1sLnJlbHNQSwECFAAU',
-  'AAAACAAAQCFQ5YCXUAECAADGBwAADwAAAAAAAAAAAAAAAACcBwAAd29yZC9zdHlsZXMueG1sUEsB',
-  'AhQAFAAAAAgAAEAhUFabRXOSAAAAuAAAABAAAAAAAAAAAAAAAAAAygkAAHdvcmQvZm9vdGVyMS54',
-  'bWxQSwUGAAAAAAYABgB+AQAAigoAAAAA',
+  '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',
   '',
 ].join('')
 
@@ -118,7 +118,9 @@ export const SAMPLE_TEMPLATE_NOTE = `# 报告模版说明
 
 ## 占位符（可选）
 
-放在文本里即可，生成时自动替换；不放占位符的段落保持原样。
+放在文本里即可，生成时自动替换；不放占位符的段落保持原样。除内置占位符外，可在本目录放一份
+「<模版名>.tokens.json」字段配置：新增自定义字段（中文可）、改内置字段取值与格式、声明生成时
+要填的著录项（向导会动态出输入框）。详见「字段配置」。
 
 - 全局（填一次）：{{report_title}} {{company}} {{inspector}} {{date}} {{device}} {{camera_model}} {{camera_serial}} {{overall_conclusion}}
 - 汇总：{{image_count}} {{overall_max_temp}} {{overall_max_at}} {{overall_max_image}} {{overall_min_temp}} {{overall_avg_temp}}
@@ -141,6 +143,17 @@ export const SAMPLE_TEMPLATE_NOTE = `# 报告模版说明
 ## 修改模版
 
 直接在本目录用任意 Word 工具编辑 .docx；也可以用「编辑」功能让 AI 帮忙改结构、加占位符。
+
+## 字段配置（<模版名>.tokens.json）
+
+与模版同名的 .tokens.json 覆盖/扩展内置字段。三种绑定：
+
+- 取值：{ "最高温": { "path": "stats.max", "format": "celsius", "scope": "image" } }（image 作用域内按分析 JSON 路径取值）
+- 著录：{ "检测地点": { "input": { "label": "检测地点" } } }（向导生成时询问）
+- 派生：{ "结论": { "template": "最高温 {{t_max}}" } }（引用其它占位符）
+
+格式：text / celsius / number:N / coord / percent0 / date-cn / basename / marker-summary。
+免配置也可直接写 {{analysis.params.distance|number:1}} 式的路径占位符。"extends": false 可整体替换内置表。
 `
 /**
  * Base64-encode UTF-8 text; `btoa` alone rejects characters beyond Latin-1.
@@ -157,13 +170,24 @@ export function base64OfText(text: string): string {
   return btoa(binary)
 }
 
+/** The sample sidecar: an added input field and a path-bound field, over the built-in vocabulary. */
+export const SAMPLE_TEMPLATE_SIDECAR = JSON.stringify({
+  version: 1,
+  fields: {
+    '检测地点': { input: { label: '检测地点' } },
+    '发射率': { path: 'analysis.params.emissivity', format: 'number:2', scope: 'image' },
+  },
+}, null, 2)
+
 /**
- * The file pair the sample seeding writes: the composed template and its note.
+ * The file set the sample seeding writes: the composed template, its note,
+ * and its field sidecar.
  * @returns workspace-relative path and base64 bytes for each file.
  */
 export function sampleTemplateFiles(): readonly { readonly path: string; readonly base64: string }[] {
   return [
     { path: '报告模版/示范模版.docx', base64: SAMPLE_TEMPLATE_BASE64 },
+    { path: '报告模版/示范模版.tokens.json', base64: base64OfText(SAMPLE_TEMPLATE_SIDECAR) },
     { path: '报告模版/模版说明.md', base64: base64OfText(SAMPLE_TEMPLATE_NOTE) },
   ]
 }

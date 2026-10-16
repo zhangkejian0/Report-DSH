@@ -64,13 +64,16 @@ const disposers: Array<() => void> = []
  * @param templatePath - absolute path of the template the stub serves.
  * @returns the service, the write log, and the owning Context.
  */
-function service(templatePath: string) {
+function service(templatePath: string, sidecarPath?: string) {
   const ctx = new Context()
   disposers.push(() => { void ctx.fiber.dispose() })
   const writes: Array<{ path: string; base64: string }> = []
   ctx.reflect.provide('workspaceFiles', {
     read: () => { throw new Error('unexpected workspaceFiles.read') },
     readBytes: async (_scope: unknown, path: string) => {
+      if (path === '报告模版/t.tokens.json' && sidecarPath !== undefined) {
+        return { absolutePath: sidecarPath, version: 'v1', offset: 0, eof: true, data: new Uint8Array(await readFile(sidecarPath)) }
+      }
       if (path !== '报告模版/t.docx') {
         throw new RemoteError('workspace-file/not-found', 'not found', { path })
       }
@@ -103,7 +106,7 @@ function request(over?: Partial<ReportGenerateRequest>): ReportGenerateRequest {
     templatePath: '报告模版/t.docx',
     outputPath: '报告/demo/demo.docx',
     imagePaths: ['IR/ir0007.jpg', 'IR/ir0008.jpg'],
-    fields: { title: '变电站巡检报告' },
+    fields: { report_title: '变电站巡检报告' },
     ...over,
   }
 }
@@ -145,6 +148,17 @@ it('maps engine refusals onto the report-generate failure reason', async () => {
   const { instance, writes } = service(file)
   await expect(instance.generate(scope, request(), signal))
     .rejects.toMatchObject({ code: 'report-generate/failed', details: { reason: 'no-image-loop' } })
+  expect(writes).toHaveLength(0)
+})
+
+it('refuses an invalid sidecar field configuration', async () => {
+  const template = await templateFile()
+  const directory = await mkdtemp(join(tmpdir(), 'dsh-report-spec-'))
+  const sidecar = join(directory, 't.tokens.json')
+  await writeFile(sidecar, '{ "version": 1, "fields": { "x": { "what": 1 } } }', 'utf8')
+  const { instance, writes } = service(template, sidecar)
+  await expect(instance.generate(scope, request(), signal))
+    .rejects.toMatchObject({ code: 'report-generate/failed', details: { reason: 'fields-invalid' } })
   expect(writes).toHaveLength(0)
 })
 

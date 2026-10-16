@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { TranslateNS } from '@deepseek-ai/dsh-client-locale/client'
 import type { ThermalAnalysis } from '@deepseek-ai/dsh-thermal-analyze/types'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { WorkspaceDirectoryEntry } from '@deepseek-ai/dsh-api-workspace-files/types'
 import { IconRefreshOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import { analyzeBridge } from '../thermal/analyze-bridge.ts'
@@ -47,6 +48,75 @@ const codeOf = (cause: unknown): string | undefined =>
 /** An image row whose analysis finished, for dispatch. */
 interface AnalyzedRow extends ImageRow {
   readonly analysis: ThermalAnalysis
+}
+
+/** One author-input descriptor the wizard renders a labeled field for. */
+interface InputField {
+  /** The token the value fills, without braces. */
+  readonly token: string
+  /** The form label; the sidecar's own text or a built-in localized one. */
+  readonly label: string
+}
+
+/** The built-in input fields, matching the engine's built-in vocabulary. */
+const BUILTIN_INPUTS: readonly (InputField & { readonly key: 'fields.report_title' | 'fields.company' | 'fields.inspector' | 'fields.device' })[] = [
+  { token: 'report_title', label: '', key: 'fields.report_title' },
+  { token: 'company', label: '', key: 'fields.company' },
+  { token: 'inspector', label: '', key: 'fields.inspector' },
+  { token: 'device', label: '', key: 'fields.device' },
+]
+
+/** The built-in inputs with their localized labels bound. */
+function builtinInputs(t: TranslateNS<'sidebarReport'>): readonly InputField[] {
+  return BUILTIN_INPUTS.map(({ key, ...field }) => ({ ...field, label: t(key) }))
+}
+
+/**
+ * Read one template's sidecar input declarations, when it carries any; a
+ * missing or unreadable sidecar keeps the built-in fields.
+ * @param sessionId - the wizard's Session, authorizing the sidecar read.
+ * @param templatePath - the chosen template's workspace-relative path.
+ * @param signal - cancellation for the read.
+ * @param t - the wizard's translate, for the built-in fallback labels.
+ * @returns the input fields to render.
+ */
+async function sidecarInputsOf(
+  sessionId: SessionId,
+  templatePath: string,
+  signal: AbortSignal,
+  t: TranslateNS<'sidebarReport'>,
+): Promise<readonly InputField[]> {
+  const read = reportBridge.read
+  if (read === undefined) return builtinInputs(t)
+  try {
+    const data = await read(sessionId, `${templatePath.replace(/\.docx$/iu, '')}.tokens.json`, signal)
+    const parsed: unknown = JSON.parse(new TextDecoder().decode(new Uint8Array(data)))
+    if (typeof parsed !== 'object' || parsed === null) return builtinInputs(t)
+    const fields = (parsed as { fields?: unknown }).fields
+    if (typeof fields !== 'object' || fields === null) return builtinInputs(t)
+    const declared: InputField[] = []
+    for (const [token, binding] of Object.entries(fields as Record<string, unknown>)) {
+      const input = typeof binding === 'object' && binding !== null ? (binding as { input?: unknown }).input : undefined
+      if (input === undefined) continue
+      const label = typeof (input as { label?: unknown }).label === 'string'
+        ? (input as { label: string }).label
+        : undefined
+      declared.push({ token, label: label === undefined || label === '' ? token : label })
+    }
+    // Sidecar inputs join the built-ins: same-token declarations restyle the
+    // built-in field, new tokens append, so every input binding stays fillable.
+    const builtin = builtinInputs(t)
+    const merged = [...builtin]
+    for (const field of declared) {
+      const index = merged.findIndex(existing => existing.token === field.token)
+      if (index === -1) merged.push(field)
+      else merged[index] = field
+    }
+    return merged
+  } catch {
+    // A missing or malformed sidecar is not a failure: the built-in fields ask.
+    return builtinInputs(t)
+  }
 }
 
 /** Engine refusal reasons with copy of their own. */
@@ -115,9 +185,9 @@ export function ReportBuilderTab({ useTabInfo, sessionId, useSessions, t }: Repo
   const [rows, setRows] = useState<readonly ImageRow[]>([])
   const [reportName, setReportName] = useState('')
   const [mode, setMode] = useState<GenerationMode>('fast')
-  const [company, setCompany] = useState('')
-  const [inspector, setInspector] = useState('')
-  const [device, setDevice] = useState('')
+  /** One author-input descriptor: the token it fills and its form label. */
+  const [inputs, setInputs] = useState<readonly InputField[]>(BUILTIN_INPUTS)
+  const [fieldValues, setFieldValues] = useState<Readonly<Record<string, string>>>({})
   const [phase, setPhase] = useState<'collecting' | 'dispatching'>('collecting')
   const [dispatchError, setDispatchError] = useState<string>()
 
@@ -233,6 +303,16 @@ export function ReportBuilderTab({ useTabInfo, sessionId, useSessions, t }: Repo
     thumbnails.current.clear()
   }, [])
 
+  /** A chosen template asks for its own inputs: its sidecar's, or the built-ins. */
+  useEffect(() => {
+    if (templatePath === undefined) return
+    const closed = { settled: false }
+    void sidecarInputsOf(sessionId, templatePath, tab.signal, t).then((found) => {
+      if (!closed.settled) setInputs(found)
+    })
+    return () => { closed.settled = true }
+  }, [sessionId, templatePath, tab.signal, t])
+
   /** A handoff names its image or its template; land on either selected. */
   useEffect(() => {
     const params = tab.navigation.params
@@ -296,10 +376,12 @@ export function ReportBuilderTab({ useTabInfo, sessionId, useSessions, t }: Repo
     }
     setPhase('dispatching')
     setDispatchError(undefined)
-    const fields: { company?: string; inspector?: string; device?: string } = {}
-    if (company.trim() !== '') fields.company = company.trim()
-    if (inspector.trim() !== '') fields.inspector = inspector.trim()
-    if (device.trim() !== '') fields.device = device.trim()
+    const fields: Record<string, string> = {}
+    for (const field of inputs) {
+      const value = fieldValues[field.token]?.trim() ?? ''
+      // The report title defaults to the report name; everything else stays empty.
+      fields[field.token] = value !== '' ? value : (field.token === 'report_title' ? name : '')
+    }
     void startGeneration({
       hostSessionId: sessionId,
       mode,
@@ -461,25 +543,19 @@ export function ReportBuilderTab({ useTabInfo, sessionId, useSessions, t }: Repo
             {t('mode.ai')}
           </button>
         </div>
-        {mode === 'fast' && (
-          <>
-            <label className={css.field}>
-              <span>{t('fields.company')}</span>
-              <input value={company} placeholder={t('fields.optional')} disabled={phase === 'dispatching'}
-                onChange={(event) => { setCompany(event.target.value) }} />
-            </label>
-            <label className={css.field}>
-              <span>{t('fields.inspector')}</span>
-              <input value={inspector} placeholder={t('fields.optional')} disabled={phase === 'dispatching'}
-                onChange={(event) => { setInspector(event.target.value) }} />
-            </label>
-            <label className={css.field}>
-              <span>{t('fields.device')}</span>
-              <input value={device} placeholder={t('fields.optional')} disabled={phase === 'dispatching'}
-                onChange={(event) => { setDevice(event.target.value) }} />
-            </label>
-          </>
-        )}
+        {mode === 'fast' && inputs.map(field => (
+          <label key={field.token} className={css.field}>
+            <span>{field.label}</span>
+            <input
+              value={fieldValues[field.token] ?? ''}
+              placeholder={field.token === 'report_title' ? name : t('fields.optional')}
+              disabled={phase === 'dispatching'}
+              onChange={(event) => {
+                setFieldValues(current => ({ ...current, [field.token]: event.target.value }))
+              }}
+            />
+          </label>
+        ))}
         {!nameValid && (templatePath !== undefined || reportName.trim() !== '') && (
           <p className={css.note}>{t('output.invalidName')}</p>
         )}

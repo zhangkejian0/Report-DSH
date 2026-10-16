@@ -6505,7 +6505,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'ReportFields',
-    declaration: 'export interface ReportFields {\n    readonly title?: string;\n    readonly company?: string;\n    readonly inspector?: string;\n    readonly device?: string;\n}',
+    declaration: 'export type ReportFields = Readonly<Record<string, string>>;',
   },
   {
     name: 'ReportGenerateRequest',

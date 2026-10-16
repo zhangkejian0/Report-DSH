@@ -14,6 +14,7 @@ import z from '@deepseek-ai/schemastery'
 import type {} from '@deepseek-ai/dsh-thermal-analyze'
 import type { WorkspaceFileScope } from '@deepseek-ai/dsh-api-workspace-files'
 import { Remote, RemoteError, TypertRemoteService, remoteErrorOf } from '@deepseek-ai/dsh-typert-protocol'
+import { parseFieldConfiguration, type FieldConfiguration } from './bindings.ts'
 import { generateReportBytes, ReportEngineError } from './engine.ts'
 import type { ReportTokenImage } from './tokens.ts'
 import type { ReportGenerateRequest, ReportGenerateResult } from './types.ts'
@@ -108,6 +109,7 @@ export class ReportGenerate extends TypertRemoteService {
       // The full read itself establishes the Session-relative authorization.
       const template = await files.readBytes(workspaceFileScope, request.templatePath, {}, signal)
       signal.throwIfAborted()
+      const fieldConfiguration = await this.loadFieldConfiguration(files, workspaceFileScope, request.templatePath, signal)
 
       const bytes = await generateReportBytes({
         templateBytes: new Uint8Array(template.data),
@@ -115,6 +117,7 @@ export class ReportGenerate extends TypertRemoteService {
         fields: request.fields ?? {},
         date: new Date(),
         imageWidthPx: this.config.imageWidthPx,
+        ...fieldConfiguration === undefined ? {} : { fieldConfiguration },
       })
       const written = await files.writeBytes(
         workspaceFileScope, request.outputPath, Buffer.from(bytes).toString('base64'), signal)
@@ -129,6 +132,41 @@ export class ReportGenerate extends TypertRemoteService {
       const failure = remoteErrorOf(cause)
       if (failure !== undefined) throw failure
       throw new RemoteError('report-generate/failed', 'Report generation failed.', { reason: 'failed' }, { cause })
+    }
+  }
+
+  /**
+   * Load one template's sidecar `<template>.tokens.json`, when it exists.
+   * @param files - the Session-authorized filesystem service.
+   * @param workspaceFileScope - Session header lookup shared with workspaceFiles.
+   * @param templatePath - the template's workspace-relative path.
+   * @param signal - Remote cancellation.
+   * @returns the parsed configuration, or undefined without a sidecar.
+   * @throws {RemoteError} `report-generate/failed` reason `fields-invalid`
+   * when a present sidecar fails validation.
+   */
+  private async loadFieldConfiguration(
+    files: { readBytes(scope: unknown, path: string, options: unknown, signal: AbortSignal): Promise<{ data: Uint8Array }> },
+    workspaceFileScope: unknown,
+    templatePath: string,
+    signal: AbortSignal,
+  ): Promise<FieldConfiguration | undefined> {
+    const sidecarPath = templatePath.replace(/\.docx$/iu, '.tokens.json')
+    let bytes: Uint8Array
+    try {
+      bytes = new Uint8Array((await files.readBytes(workspaceFileScope, sidecarPath, {}, signal)).data)
+    } catch (absent) {
+      // Any read refusal — most commonly no sidecar at all — falls back to the
+      // built-in vocabulary; the template read already established authorization.
+      void absent
+      return undefined
+    }
+    try {
+      return parseFieldConfiguration(new TextDecoder().decode(bytes))
+    } catch (cause) {
+      throw new RemoteError('report-generate/failed',
+        `${sidecarPath}: ${cause instanceof Error ? cause.message : String(cause)}`,
+        { reason: 'fields-invalid' }, { cause })
     }
   }
 }

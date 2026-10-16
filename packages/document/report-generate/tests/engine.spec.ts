@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { AgentDocument, DOCMD_ATOMS } from '@wordinweb/agent'
 import type { ThermalAnalysis } from '@deepseek-ai/dsh-thermal-analyze'
 import { generateReportBytes, ReportEngineError } from '../src/engine.ts'
-import { IMAGE_LOOP_CLOSE, IMAGE_LOOP_OPEN } from '../src/tokens.ts'
+import { IMAGE_LOOP_CLOSE, IMAGE_LOOP_OPEN, MARKER_LOOP_CLOSE, MARKER_LOOP_OPEN } from '../src/tokens.ts'
 import type { ReportTokenImage } from '../src/tokens.ts'
 
 /** Minimal structural analysis fixture; only the fields the tokens read. */
@@ -100,7 +100,7 @@ describe('generateReportBytes', () => {
     const bytes = await generateReportBytes({
       templateBytes: await fullTemplate(),
       images: IMAGES,
-      fields: { title: '变电站巡检报告', company: '示例检测', inspector: '张三', device: '1号主变' },
+      fields: { report_title: '变电站巡检报告', company: '示例检测', inspector: '张三', device: '1号主变' },
       date: new Date(2026, 9, 15),
       imageWidthPx: 460,
     })
@@ -125,6 +125,79 @@ describe('generateReportBytes', () => {
     expect(body.split(DOCMD_ATOMS.object).length - 1).toBe(2)
     // Word is asked to refresh fields (TOC page numbers) on open.
     expect(settingsXmlOf(bytes)).toContain('<w:updateFields/>')
+  })
+
+  it('honors a sidecar that renames, adds, and reformats fields', async () => {
+    const bytes = await generateReportBytes({
+      templateBytes: await templateBytes([
+        { type: 'paragraph', text: '{{检测单位}}，{{风}}速' },
+        { type: 'paragraph', text: IMAGE_LOOP_OPEN },
+        { type: 'paragraph', text: '发射率 {{发射率}}' },
+        { type: 'paragraph', text: '{{t_max}} {{image_file}}' },
+        { type: 'paragraph', text: IMAGE_LOOP_CLOSE },
+      ]),
+      images: IMAGES,
+      fields: { 检测单位: '示例检测', 风: '微' },
+      date: new Date(2026, 9, 15),
+      imageWidthPx: 460,
+      fieldConfiguration: {
+        version: 1,
+        fields: {
+          '检测单位': { input: { label: '检测单位' } },
+          '发射率': { path: 'analysis.params.emissivity', format: 'number:2', scope: 'image' },
+          '风': { input: {} },
+        },
+      },
+    })
+    const body = storyText(bytes, 'body')
+    expect(body).toContain('示例检测')
+    expect(body).toContain('发射率 0.95')
+    expect(body).toContain('示例检测，微速')
+    // The built-in vocabulary still serves tokens the sidecar does not touch.
+    expect(body).toContain('42.31℃ ir0007.jpg')
+    expect(body).not.toContain('{{')
+  })
+
+  it('resolves escape-hatch path tokens without any configuration', async () => {
+    const bytes = await generateReportBytes({
+      templateBytes: await templateBytes([
+        { type: 'paragraph', text: IMAGE_LOOP_OPEN },
+        { type: 'paragraph', text: '距离 {{analysis.params.distance|number:1}}m，首标记 {{analysis.markers[0].name}}' },
+        { type: 'paragraph', text: IMAGE_LOOP_CLOSE },
+      ]),
+      images: IMAGES,
+      fields: {},
+      date: new Date(),
+      imageWidthPx: 460,
+    })
+    const body = storyText(bytes, 'body')
+    expect(body).toContain('距离 3.0m')
+    expect(body).toContain('首标记 Ar1')
+    expect(body).not.toContain('{{')
+  })
+
+  it('expands a flattened marker-detail row per image-marker pair', async () => {
+    const bytes = await generateReportBytes({
+      templateBytes: await templateBytes([
+        { type: 'table', rows: [
+          ['图', '标记', '最高'],
+          [`${MARKER_LOOP_OPEN} {{image_file}}`, '{{marker.name}}', `{{marker.max|celsius}} ${MARKER_LOOP_CLOSE}`],
+        ] },
+        { type: 'paragraph', text: IMAGE_LOOP_OPEN },
+        { type: 'paragraph', text: '{{image_file}}' },
+        { type: 'paragraph', text: IMAGE_LOOP_CLOSE },
+      ]),
+      images: IMAGES,
+      fields: {},
+      date: new Date(),
+      imageWidthPx: 460,
+    })
+    const body = storyText(bytes, 'body')
+    expect(body).toContain('ir0007.jpg')
+    expect(body).toContain('Ar1')
+    expect(body).toContain('42.31℃')
+    expect(body).toContain('38.11℃')
+    expect(body).not.toContain('{{')
   })
 
   it('refuses a template without a loop region', async () => {

@@ -120,6 +120,7 @@ export function TemplateLibraryTab({ useTabInfo, sessionId, useSessions, t }: Te
           <p>{t('library.convention.global')}</p>
           <p>{t('library.convention.image')}</p>
           <p>{t('library.convention.each')}</p>
+          <p>{t('library.convention.sidecar')}</p>
         </div>
       )}
       <div className={css.create}>

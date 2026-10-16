@@ -4,23 +4,29 @@
  *
  * The engine rests on one projection invariant, asserted per run: the body
  * story projects exactly one line per paragraph in document order, table-cell
- * paragraphs included. Phase A validates tokens and locates loop markers by
- * mapping marker paragraphs onto line indexes. Phase B performs all structural
- * work on the WordInWeb core XML tree — cloning the per-image section (a
- * bracketed block range, or a marker-carrying table row) once per image,
+ * paragraphs included. Phase A validates tokens against the merged field
+ * bindings (built-in vocabulary plus the template's sidecar) and locates loop
+ * markers by mapping marker paragraphs onto line indexes. Phase B performs
+ * all structural work on the WordInWeb core XML tree — cloning the per-image
+ * section (a bracketed block range, or a marker-carrying table row) once per
+ * image, cloning the flattened marker-detail row once per image–marker pair,
  * removing spent markers, and asking Word to refresh fields on open. Phase C
- * substitutes tokens through the projection's patch API; Phase D inserts each
- * image's thermal PNG at its recorded site; Phase E refuses to emit anything
- * while a `{{` residue survives.
+ * substitutes tokens through the projection's patch API, each line against
+ * its scope's bindings; Phase D inserts each image's thermal PNG at its
+ * recorded site; Phase E refuses to emit anything while a `{{` residue
+ * survives.
  */
 import { AgentDocument, type AgentPatchHunk, type AgentProjectResult } from '@wordinweb/agent'
 import { DocxDocument, localName, parseXml, serializeXml, type XmlElement } from '@wordinweb/core'
 import {
-  IMAGE_LOOP_CLOSE, IMAGE_LOOP_OPEN, applyTokenValues, globalTokenValues, imageTokenValues,
-  knownTokens,
+  IMAGE_LOOP_CLOSE, IMAGE_LOOP_OPEN, MARKER_LOOP_CLOSE, MARKER_LOOP_OPEN,
+  BUILTIN_FIELD_CONFIGURATION, type ReportTokenImage,
 } from './tokens.ts'
-import type { ReportFields, ReportGenerateReason } from './types.ts'
-import type { ReportTokenImage } from './tokens.ts'
+import {
+  looksLikePathToken, mergeFieldConfiguration, resolveToken,
+  type Aggregates, type FieldConfiguration, type MergedFields, type ResolveScope,
+} from './bindings.ts'
+import type { ReportGenerateReason } from './types.ts'
 
 /** One failed generation, with the wire-ready reason and an actionable message. */
 export class ReportEngineError extends Error {
@@ -33,10 +39,13 @@ export class ReportEngineError extends Error {
 export interface EngineInput {
   readonly templateBytes: Uint8Array
   readonly images: readonly ReportTokenImage[]
-  readonly fields: ReportFields
+  /** Author-supplied values keyed by token text. */
+  readonly fields: Readonly<Record<string, string>>
   readonly date: Date
   /** Insertion width for thermal images; height keeps the natural ratio. */
   readonly imageWidthPx: number
+  /** The template's sidecar field configuration, when one exists. */
+  readonly fieldConfiguration?: FieldConfiguration
 }
 
 /** One projection window covering every realistic report; larger templates fail loud. */
@@ -45,6 +54,18 @@ const MAX_CHARACTERS = 200_000
 
 /** Every token-looking text in one line, braces included. */
 const TOKEN_LIKE = /\{\{[^{}]*\}\}/gu
+
+/** The image slot token; the engine inserts a drawing at its site. */
+const IMAGE_THERMAL = '{{image_thermal}}'
+
+/** Token texts cleared wherever they appear; expansion removes their sections. */
+const STRUCTURAL_CLEARS = [IMAGE_LOOP_OPEN, IMAGE_LOOP_CLOSE, MARKER_LOOP_OPEN, MARKER_LOOP_CLOSE, IMAGE_THERMAL] as const
+
+/** One image and one of its measured markers, as a marker row instance. */
+interface MarkerPair {
+  readonly image: ReportTokenImage
+  readonly marker: ReportTokenImage['analysis']['markers'][number]
+}
 
 /** All `w:t` text of one element subtree, joined. */
 function textOf(element: XmlElement): string {
@@ -84,21 +105,22 @@ function projectAll(agent: AgentDocument, story: string): AgentProjectResult {
   return projection
 }
 
-/** One bracketed per-image region with its template geometry. */
+/** One bracketed loop region with its template geometry. */
 interface TemplateRegion {
-  /** Whether the region is a bracketed block range or a marker table row. */
-  readonly kind: 'range' | 'row'
+  /** Range (body blocks), image row (table row per image), or marker row (per image–marker pair). */
+  readonly kind: 'range' | 'row' | 'markerRow'
   /** Template-projection line where an instance's lines begin. */
   readonly startLine: number
   /** Lines one instance projects to; row clones keep their marker paragraphs. */
   readonly linesPerInstance: number
 }
 
-/** The validated template's stories and loop regions. */
+/** The validated template's stories, loop regions, and merged fields. */
 interface ScannedTemplate {
   /** Every story id and kind, body included. */
   readonly stories: ReadonlyArray<{ readonly id: string; readonly kind: string }>
   readonly regions: readonly TemplateRegion[]
+  readonly merged: MergedFields
 }
 
 /** Marker paragraphs at body-block level, with their role. */
@@ -113,18 +135,21 @@ function bodyMarkerParagraphs(doc: DocxDocument): Map<XmlElement, 'open' | 'clos
   return markers
 }
 
-/** Table rows carrying any loop marker, with which markers they carry. */
-function markerTableRows(doc: DocxDocument): Map<XmlElement, { open: boolean; close: boolean }> {
-  const rows = new Map<XmlElement, { open: boolean; close: boolean }>()
+/** Which loop markers one table row carries, by loop kind. */
+interface RowMarkers { readonly open: string | undefined; readonly close: string | undefined }
+
+/** Table rows carrying loop markers of one kind, with which markers they carry. */
+function loopTableRows(doc: DocxDocument, openMarker: string, closeMarker: string): Map<XmlElement, RowMarkers> {
+  const rows = new Map<XmlElement, RowMarkers>()
   for (const block of doc.sections.flatMap(section => section.blocks)) {
     if (block.type !== 'table' || block.src === undefined) continue
     const walkRows = (element: XmlElement): void => {
       for (const child of element.children) {
         if (localName(child.name) === 'tr') {
           const text = textOf(child)
-          const open = text.includes(IMAGE_LOOP_OPEN)
-          const close = text.includes(IMAGE_LOOP_CLOSE)
-          if (open || close) rows.set(child, { open, close })
+          const open = text.includes(openMarker) ? openMarker : undefined
+          const close = text.includes(closeMarker) ? closeMarker : undefined
+          if (open !== undefined || close !== undefined) rows.set(child, { open, close })
         } else {
           walkRows(child)
         }
@@ -135,16 +160,22 @@ function markerTableRows(doc: DocxDocument): Map<XmlElement, { open: boolean; cl
   return rows
 }
 
+/** Whether every value in one row-marker pair is present. */
+function completeRow(markers: RowMarkers | undefined): boolean {
+  return markers?.open !== undefined && markers.close !== undefined
+}
+
 /**
  * Validate the template's tokens and locate its loop regions. The marker
  * paragraphs are mapped onto line indexes through the document-order
  * paragraph list, which the projection invariant makes an identity map.
  * @param templateBytes - the raw template .docx.
- * @returns the story inventory and each region's template geometry.
+ * @param fieldConfiguration - the template's sidecar configuration, if any.
+ * @returns the story inventory, each region's template geometry, and merged fields.
  * @throws {ReportEngineError} on unreadable templates, unknown tokens, loop
  * markers outside the body story, or broken marker pairing.
  */
-function scanTemplate(templateBytes: Uint8Array): ScannedTemplate {
+function scanTemplate(templateBytes: Uint8Array, fieldConfiguration: FieldConfiguration | undefined): ScannedTemplate {
   let agent: AgentDocument
   try {
     agent = AgentDocument.load(templateBytes)
@@ -156,18 +187,27 @@ function scanTemplate(templateBytes: Uint8Array): ScannedTemplate {
   if (!('stories' in inspected)) throw new ReportEngineError('template-invalid', 'The template reports no stories.')
   const stories = inspected.stories.map(story => ({ id: story.id, kind: story.kind }))
 
-  const known = knownTokens()
+  const merged = mergeFieldConfiguration(BUILTIN_FIELD_CONFIGURATION, fieldConfiguration)
+  const known = new Set<string>([
+    ...Object.keys(merged.fields).map(token => `{{${token}}}`),
+    IMAGE_LOOP_OPEN, IMAGE_LOOP_CLOSE, MARKER_LOOP_OPEN, MARKER_LOOP_CLOSE, IMAGE_THERMAL,
+  ])
   for (const story of stories) {
     if (story.kind === 'textbox') continue
     for (const [index, line] of projectAll(agent, story.id).text.split('\n').entries()) {
-      if (story.id !== 'body' && (line.includes(IMAGE_LOOP_OPEN) || line.includes(IMAGE_LOOP_CLOSE))) {
-        throw new ReportEngineError('template-markers',
-          `Loop markers are only supported in the body, not ${story.id}.`)
+      for (const marker of [IMAGE_LOOP_OPEN, IMAGE_LOOP_CLOSE, MARKER_LOOP_OPEN, MARKER_LOOP_CLOSE]) {
+        if (story.id !== 'body' && line.includes(marker)) {
+          throw new ReportEngineError('template-markers',
+            `Loop markers are only supported in the body, not ${story.id}.`)
+        }
       }
       for (const match of line.match(TOKEN_LIKE) ?? []) {
-        if (!known.has(match)) {
+        const token = match.slice(2, -2).trim()
+        if (!known.has(`{{${token}}}`) && !looksLikePathToken(token)) {
+          const available = Object.keys(merged.fields).slice(0, 12).join(' ')
           throw new ReportEngineError('unknown-token',
-            `Unknown token ${match} at ${story.id === 'body' ? '' : `${story.id} `}line ${index + 1}.`)
+            `Unknown token ${match} at ${story.id === 'body' ? '' : `${story.id} `}line ${index + 1}`
+            + `; available fields: ${available}${Object.keys(merged.fields).length > 12 ? ' …' : ''}.`)
         }
       }
     }
@@ -183,18 +223,19 @@ function scanTemplate(templateBytes: Uint8Array): ScannedTemplate {
   paragraphs.forEach((paragraph, index) => lineOf.set(paragraph, index))
 
   const regions: TemplateRegion[] = []
-  for (const [row, markers] of markerTableRows(core)) {
-    if (!markers.open || !markers.close) {
+  for (const [row, markers] of loopTableRows(core, IMAGE_LOOP_OPEN, IMAGE_LOOP_CLOSE)) {
+    if (!completeRow(markers)) {
       throw new ReportEngineError('template-markers',
         'A table-row loop needs both loop markers inside the same table row.')
     }
-    const rowParagraphs = paragraphs.filter(paragraph => rowContains(row, paragraph))
-    const first = rowParagraphs[0]
-    const startLine = first === undefined ? undefined : lineOf.get(first)
-    if (startLine === undefined) throw new ReportEngineError('template-markers', 'A marker row projects to no lines.')
-    // Clones keep their marker paragraphs; the text phase clears the marker
-    // text, so every instance projects the row's full paragraph count.
-    regions.push({ kind: 'row', startLine, linesPerInstance: rowParagraphs.length })
+    regions.push({ kind: 'row', ...rowGeometry(row, paragraphs, lineOf) })
+  }
+  for (const [row, markers] of loopTableRows(core, MARKER_LOOP_OPEN, MARKER_LOOP_CLOSE)) {
+    if (!completeRow(markers)) {
+      throw new ReportEngineError('template-markers',
+        'A marker-row loop needs both loop markers inside the same table row.')
+    }
+    regions.push({ kind: 'markerRow', ...rowGeometry(row, paragraphs, lineOf) })
   }
 
   let pending: number | undefined
@@ -214,8 +255,33 @@ function scanTemplate(templateBytes: Uint8Array): ScannedTemplate {
   }
   if (pending !== undefined) throw new ReportEngineError('template-markers', 'A loop opens without closing.')
 
+  // Marker rows iterate a flattened pair list, so they cannot sit inside a
+  // per-image section whose clone count differs; keep them outside ranges.
+  const markerRows = regions.filter(region => region.kind === 'markerRow')
+  const ranges = regions.filter(region => region.kind === 'range')
+  for (const markerRow of markerRows) {
+    for (const range of ranges) {
+      if (markerRow.startLine > range.startLine && markerRow.startLine < range.startLine + range.linesPerInstance) {
+        throw new ReportEngineError('template-markers',
+          'A marker-row loop must sit outside the per-image section; it repeats over every image itself.')
+      }
+    }
+  }
+
   regions.sort((left, right) => left.startLine - right.startLine)
-  return { stories, regions }
+  return { stories, regions, merged }
+}
+
+/** One marker table row's start line and per-instance line count. */
+function rowGeometry(row: XmlElement, paragraphs: readonly XmlElement[], lineOf: Map<XmlElement, number>):
+{ startLine: number; linesPerInstance: number } {
+  const rowParagraphs = paragraphs.filter(paragraph => rowContains(row, paragraph))
+  const first = rowParagraphs[0]
+  const startLine = first === undefined ? undefined : lineOf.get(first)
+  if (startLine === undefined) throw new ReportEngineError('template-markers', 'A marker row projects to no lines.')
+  // Clones keep their marker paragraphs; the text phase clears the marker
+  // text, so every instance projects the row's full paragraph count.
+  return { startLine, linesPerInstance: rowParagraphs.length }
 }
 
 /** Whether one paragraph element sits inside one row element. */
@@ -237,15 +303,19 @@ interface RegionSpan {
   readonly startLine: number
   readonly linesPerInstance: number
   readonly count: number
+  /** Which instance list the region iterates. */
+  readonly variant: 'image' | 'marker'
 }
 
 /**
  * Expand every region structurally on the core XML tree. Paragraph-range
  * regions clone their bracketed blocks and drop markers and the spent
  * template range; table-row regions clone the marker row — clones keep their
- * marker paragraphs, which the text phase clears — and drop the template row.
+ * marker paragraphs, which the text phase clears — and drop the template row;
+ * marker rows clone once per image–marker pair.
  * @param templateBytes - the validated template.
- * @param images - the report's images, driving clone counts.
+ * @param images - the report's images, driving image clone counts.
+ * @param markerPairs - the flattened image–marker pairs, driving marker-row counts.
  * @param regions - the template's loop regions in document order.
  * @returns the structured bytes and each region's final line span.
  * @throws {ReportEngineError} when the XML tree disagrees with the scan.
@@ -253,33 +323,32 @@ interface RegionSpan {
 function expandStructure(
   templateBytes: Uint8Array,
   images: readonly ReportTokenImage[],
+  markerPairs: readonly MarkerPair[],
   regions: readonly TemplateRegion[],
 ): { bytes: Uint8Array; spans: readonly RegionSpan[] } {
   const doc = DocxDocument.load(templateBytes)
   const markerParagraphs = bodyMarkerParagraphs(doc)
-  const markerRows = markerTableRows(doc)
-  const expectedRegions = markerParagraphs.size / 2 + markerRows.size
+  const imageRows = loopTableRows(doc, IMAGE_LOOP_OPEN, IMAGE_LOOP_CLOSE)
+  const markerRows = loopTableRows(doc, MARKER_LOOP_OPEN, MARKER_LOOP_CLOSE)
+  const expectedRegions = markerParagraphs.size / 2 + imageRows.size + markerRows.size
   if (expectedRegions !== regions.length) {
     throw new ReportEngineError('template-markers',
       `The scan found ${regions.length} loop(s) but the template carries ${expectedRegions}.`)
   }
 
-  for (const [row, markers] of markerRows) {
-    if (!markers.open || !markers.close) {
+  for (const [row, markers] of imageRows) {
+    if (!completeRow(markers)) {
       throw new ReportEngineError('template-markers',
         'A table-row loop needs both loop markers inside the same table row.')
     }
-    const table = doc.findParentOf(row)
-    if (table === undefined) throw new ReportEngineError('template-markers', 'A marker row is detached.')
-    const rows = table.children
-    const rowIndex = rows.indexOf(row)
-    if (rowIndex === -1) throw new ReportEngineError('template-markers', 'A marker row is detached.')
-    let insertAt = rowIndex + 1
-    for (let copy = 0; copy < images.length; copy++) {
-      rows.splice(insertAt, 0, cloneElement(row))
-      insertAt++
+    expandTableRow(doc, row, images.length)
+  }
+  for (const [row, markers] of markerRows) {
+    if (!completeRow(markers)) {
+      throw new ReportEngineError('template-markers',
+        'A marker-row loop needs both loop markers inside the same table row.')
     }
-    rows.splice(rowIndex, 1)
+    expandTableRow(doc, row, markerPairs.length)
   }
 
   let pending: XmlElement | undefined
@@ -328,24 +397,67 @@ function expandStructure(
   const spans: RegionSpan[] = []
   let offset = 0
   for (const region of regions) {
+    const count = region.kind === 'markerRow' ? markerPairs.length : images.length
     spans.push({
       startLine: region.startLine + offset - (region.kind === 'range' ? 1 : 0),
       linesPerInstance: region.linesPerInstance,
-      count: images.length,
+      count,
+      variant: region.kind === 'markerRow' ? 'marker' : 'image',
     })
-    offset += (images.length - 1) * region.linesPerInstance - (region.kind === 'range' ? 2 : 0)
+    offset += (count - 1) * region.linesPerInstance - (region.kind === 'range' ? 2 : 0)
   }
   return { bytes: doc.save(), spans }
 }
 
-/** Instance index of one final-projection line, when it sits inside a region. */
-function instanceOfLine(spans: readonly RegionSpan[], line: number): number | undefined {
+/** Clone one marker table row in place once per instance, then drop the template row. */
+function expandTableRow(doc: DocxDocument, row: XmlElement, count: number): void {
+  const table = doc.findParentOf(row)
+  if (table === undefined) throw new ReportEngineError('template-markers', 'A marker row is detached.')
+  const rows = table.children
+  const rowIndex = rows.indexOf(row)
+  if (rowIndex === -1) throw new ReportEngineError('template-markers', 'A marker row is detached.')
+  let insertAt = rowIndex + 1
+  for (let copy = 0; copy < count; copy++) {
+    rows.splice(insertAt, 0, cloneElement(row))
+    insertAt++
+  }
+  rows.splice(rowIndex, 1)
+}
+
+/** The instance a final-projection line belongs to, when it sits inside a region. */
+function lineInstance(spans: readonly RegionSpan[], line: number): { variant: 'image' | 'marker'; instance: number } | undefined {
   for (const span of spans) {
     if (line >= span.startLine && line < span.startLine + span.count * span.linesPerInstance) {
-      return Math.floor((line - span.startLine) / span.linesPerInstance)
+      return { variant: span.variant, instance: Math.floor((line - span.startLine) / span.linesPerInstance) }
     }
   }
   return undefined
+}
+
+/** Whole-report aggregates the global scope exposes by path. */
+function aggregatesOf(images: readonly ReportTokenImage[]): Aggregates {
+  const hottest = images.reduce((best, image) => image.analysis.stats.max > best.analysis.stats.max ? image : best)
+  const maxOf = (pick: (image: ReportTokenImage) => number): number => Math.max(...images.map(pick))
+  const minOf = (pick: (image: ReportTokenImage) => number): number => Math.min(...images.map(pick))
+  const avgOf = (pick: (image: ReportTokenImage) => number): number =>
+    images.map(pick).reduce((sum, value) => sum + value, 0) / images.length
+  return {
+    count: images.length,
+    overall: {
+      max: maxOf(image => image.analysis.stats.max),
+      min: minOf(image => image.analysis.stats.min),
+      avg: avgOf(image => image.analysis.stats.avg),
+      maxAt: hottest.analysis.stats.maxAt,
+      maxImage: hottest.path,
+    },
+  }
+}
+
+/** Substitute one line's tokens against the merged fields and the line's scope. */
+function substituteLine(line: string, merged: MergedFields, scope: ResolveScope): string {
+  let out = line
+  for (const structural of STRUCTURAL_CLEARS) out = out.replaceAll(structural, '')
+  return out.replace(TOKEN_LIKE, match => resolveToken(match.slice(2, -2).trim(), merged, scope) ?? match)
 }
 
 /** Natural pixel dimensions of one PNG image, or undefined for a foreign header. */
@@ -357,42 +469,46 @@ function pngDimensionsOf(bytes: Uint8Array): { widthPx: number; heightPx: number
 
 /**
  * Generate one report from a validated template and measured images.
- * @param input - template bytes, images, author fields, date, and image width.
+ * @param input - template bytes, images, author fields, date, image width,
+ * and the template's sidecar field configuration.
  * @returns the finished report bytes, free of every `{{` token.
  * @throws {ReportEngineError} with the wire reason at every refusal point.
  */
 export async function generateReportBytes(input: EngineInput): Promise<Uint8Array> {
-  const { templateBytes, images, fields, date, imageWidthPx } = input
+  const { templateBytes, images, fields, date, imageWidthPx, fieldConfiguration } = input
   if (images.length === 0) throw new ReportEngineError('failed', 'A report needs at least one image.')
 
-  const { stories, regions } = scanTemplate(templateBytes)
-  if (regions.length === 0) {
+  const { stories, regions, merged } = scanTemplate(templateBytes, fieldConfiguration)
+  if (!regions.some(region => region.kind !== 'markerRow')) {
     throw new ReportEngineError('no-image-loop',
       `The template has no ${IMAGE_LOOP_OPEN}…${IMAGE_LOOP_CLOSE} region; bracket one per-image section or use AI generation.`)
   }
-  const { bytes: structuredBytes, spans } = expandStructure(templateBytes, images, regions)
+  const markerPairs: MarkerPair[] = images.flatMap(image =>
+    image.analysis.markers.filter(marker => marker.name !== 'global').map(marker => ({ image, marker })))
+  const { bytes: structuredBytes, spans } = expandStructure(templateBytes, images, markerPairs, regions)
 
   const agent = AgentDocument.load(structuredBytes)
-  const globals = globalTokenValues({ images, fields, date })
-  globals.set(IMAGE_LOOP_OPEN, '')
-  globals.set(IMAGE_LOOP_CLOSE, '')
+  const aggregates = aggregatesOf(images)
+  const globalScope: ResolveScope = { kind: 'global', inputs: fields, date, aggregates,
+    ...(images[0] === undefined ? {} : { image: images[0] }) }
 
-  // Text phase: body carries per-instance values; every story carries globals.
+  // Text phase: body lines resolve against their own scope; other stories global.
   let bodyProjection = projectAll(agent, 'body')
   const hunks: AgentPatchHunk[] = []
-  /** Sites of {{image_thermal}} by final line, with their instance index. */
+  /** Sites of the image slot by final line, with their image instance. */
   const imageSites: Array<{ line: number; instance: number }> = []
   for (const [index, line] of bodyProjection.text.split('\n').entries()) {
-    let replaced = line
-    const instance = instanceOfLine(spans, index)
-    if (instance !== undefined) {
-      const image = images[instance]
-      if (image !== undefined) {
-        if (line.includes('{{image_thermal}}')) imageSites.push({ line: index, instance })
-        replaced = applyTokenValues(replaced, imageTokenValues(image))
-      }
+    const site = lineInstance(spans, index)
+    let scope = globalScope
+    if (site?.variant === 'image' && images[site.instance] !== undefined) {
+      const lineImage = images[site.instance]
+      if (lineImage !== undefined) scope = { kind: 'image', inputs: fields, date, image: lineImage }
+      if (line.includes(IMAGE_THERMAL)) imageSites.push({ line: index, instance: site.instance })
+    } else if (site?.variant === 'marker') {
+      const pair = markerPairs[site.instance]
+      if (pair !== undefined) scope = { kind: 'marker', inputs: fields, date, image: pair.image, marker: pair.marker }
     }
-    replaced = applyTokenValues(replaced, globals)
+    const replaced = substituteLine(line, merged, scope)
     if (replaced !== line) hunks.push({ startLine: index + 1, endLine: index + 1, newText: replaced })
   }
   if (hunks.length > 0) {
@@ -407,7 +523,7 @@ export async function generateReportBytes(input: EngineInput): Promise<Uint8Arra
     const projection = projectAll(agent, story.id)
     const storyHunks: AgentPatchHunk[] = []
     for (const [index, line] of projection.text.split('\n').entries()) {
-      const replaced = applyTokenValues(line, globals)
+      const replaced = substituteLine(line, merged, globalScope)
       if (replaced !== line) storyHunks.push({ startLine: index + 1, endLine: index + 1, newText: replaced })
     }
     if (storyHunks.length > 0) {

@@ -2579,7 +2579,7 @@ export interface Config {
 
 ## `@deepseek-ai/dsh-report-generate`
 
-- `source`: [`packages/document/report-generate/src/index.ts:31`](../packages/document/report-generate/src/index.ts)
+- `source`: [`packages/document/report-generate/src/index.ts:32`](../packages/document/report-generate/src/index.ts)
 
 ```ts config-catalog
 /** Generation limits. */
