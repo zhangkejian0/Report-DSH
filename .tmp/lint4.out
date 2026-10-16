@@ -1,0 +1,46 @@
+
+  x typescript(prefer-promise-reject-errors): Expected the Promise rejection reason to be an Error.
+     ,-[packages/client/ui-sidebar-documentpreview/src/client/report/generate.ts:102:67]
+ 101 |     const timer = setTimeout(resolve, ms)
+ 102 |     signal.addEventListener('abort', () => { clearTimeout(timer); reject(signal.reason) }, { once: true })
+     :                                                                   ^^^^^^^^^^^^^^^^^^^^^
+ 103 |   })
+     `----
+
+  x typescript(no-unnecessary-condition): This condition will always return the same value since the types have no overlap.
+     ,-[packages/client/ui-sidebar-documentpreview/src/client/report/ReportBuilderTab.tsx:239:46]
+ 238 |     const params = tab.navigation.params
+ 239 |     if (typeof params !== 'object' || params === null) return
+     :                                      ^^^|^^^ ^^^^^|^^
+     :                                         |     |   `-- Type: null
+     :                                         `-- Type: WorkspaceFileParams | { readonly preselectImage?: string; readonly preselectTemplate?: string; }
+ 240 |     if ('preselectTemplate' in params && typeof params.preselectTemplate === 'string') {
+     `----
+
+  x typescript(no-unnecessary-condition): This condition will always return the same value since the types have no overlap.
+     ,-[packages/client/ui-sidebar-documentpreview/src/client/report/ReportBuilderTab.tsx:291:24]
+ 290 |     const chosenTemplate = templatePath
+ 291 |     if (chosenTemplate === undefined) return
+     :         ^^^^^^^|^^^^^^ ^^^^^^^^|^^^^
+     :                |        |      `-- Type: undefined
+     :                `-- Type: string
+ 292 |     const deps = generationBridge.deps
+     `----
+
+  x typescript(await-thenable): Unexpected `await` of a non-Promise (non-"Thenable") value.
+    ,-[packages/client/ui-sidebar-documentpreview/src/client/report/index.ts:71:11]
+ 70 |             prompt: async (sessionId, text, signal) => {
+ 71 | ,->           await expectOk(await scope.remote.session.prompt({
+    : |             ^^^^^
+ 72 | |               requestId: `report-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}` as SessionRequestId,
+ 73 | |               sessionId,
+ 74 | |               mode: 'queue',
+ 75 | |               content: [{ type: 'text', text }],
+ 76 | |->           }, signal))
+    : `---- This expression is not Promise-like
+ 77 |             },
+    `----
+  help: Remove `await` if the value is synchronous, or change the expression to return a Promise or Thenable before awaiting it.
+
+Found 0 warnings and 4 errors.
+Finished in 2.3s on 11 files with 90 rules using 16 threads.

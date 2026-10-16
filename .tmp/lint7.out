@@ -1,0 +1,13 @@
+
+  x typescript(no-unnecessary-condition): This condition will always return the same value since the types have no overlap.
+     ,-[packages/document/report-generate/src/bindings.ts:120:17]
+ 119 |     const json = JSON.stringify(value)
+ 120 |     return json === undefined ? '' : json
+     :           ^^|^^ ^^^^^^^^|^^^^
+     :             |    |      `-- Type: undefined
+     :             `-- Type: string
+ 121 |   }
+     `----
+
+Found 0 warnings and 1 error.
+Finished in 3.5s on 7 files with 90 rules using 16 threads.

@@ -1,0 +1,65 @@
+
+  x @stylistic(max-len): This line has a length of 158. Maximum allowed is 140.
+     ,-[packages/document/report-generate/src/bindings.ts:216:1]
+ 215 |   }
+ 216 |   return { version: 1, ...(record.extends === undefined ? {} : { extends: record.extends }), fields: record.fields as Readonly<Record<string, FieldBinding>> }
+     : ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ 217 | }
+     `----
+
+  x typescript(no-base-to-string): 'value' will use Object's default stringification format ('[object Object]') when stringified.
+     ,-[packages/document/report-generate/src/bindings.ts:121:21]
+ 120 |     case 'text':
+ 121 |       return String(value)
+     :                     ^^^^^
+ 122 |     case 'celsius':
+     `----
+  help: Consider picking a property (e.g. `user.name`), using a formatter (or `JSON.stringify`), or implementing a custom `toString()`/`toLocaleString()` on the type.
+
+  x typescript(no-base-to-string): 'value' will use Object's default stringification format ('[object Object]') when stringified.
+     ,-[packages/document/report-generate/src/bindings.ts:128:71]
+ 127 |       const pair = value as readonly [number, number]
+ 128 |       return Array.isArray(pair) ? `(${pair[0]},${pair[1]})` : String(value)
+     :                                                                       ^^^^^
+ 129 |     }
+     `----
+  help: Consider picking a property (e.g. `user.name`), using a formatter (or `JSON.stringify`), or implementing a custom `toString()`/`toLocaleString()` on the type.
+
+  x typescript(no-base-to-string): 'value' will use Object's default stringification format ('[object Object]') when stringified.
+     ,-[packages/document/report-generate/src/bindings.ts:133:68]
+ 132 |     case 'date-cn': {
+ 133 |       const date = value instanceof Date ? value : new Date(String(value))
+     :                                                                    ^^^^^
+ 134 |       return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`
+     `----
+  help: Consider picking a property (e.g. `user.name`), using a formatter (or `JSON.stringify`), or implementing a custom `toString()`/`toLocaleString()` on the type.
+
+  x typescript(no-base-to-string): 'value' will use Object's default stringification format ('[object Object]') when stringified.
+     ,-[packages/document/report-generate/src/bindings.ts:137:21]
+ 136 |     case 'basename':
+ 137 |       return String(value).replace(/^.*[/\\]/u, '') || String(value)
+     :                     ^^^^^
+ 138 |     case 'marker-summary':
+     `----
+  help: Consider picking a property (e.g. `user.name`), using a formatter (or `JSON.stringify`), or implementing a custom `toString()`/`toLocaleString()` on the type.
+
+  x typescript(no-base-to-string): 'value' will use Object's default stringification format ('[object Object]') when stringified.
+     ,-[packages/document/report-generate/src/bindings.ts:137:63]
+ 136 |     case 'basename':
+ 137 |       return String(value).replace(/^.*[/\\]/u, '') || String(value)
+     :                                                               ^^^^^
+ 138 |     case 'marker-summary':
+     `----
+  help: Consider picking a property (e.g. `user.name`), using a formatter (or `JSON.stringify`), or implementing a custom `toString()`/`toLocaleString()` on the type.
+
+  x typescript(no-base-to-string): 'record.scope' may use Object's default stringification format ('[object Object]') when stringified.
+     ,-[packages/document/report-generate/src/bindings.ts:251:84]
+ 250 |   }
+ 251 |   if (record.scope !== undefined && !['global', 'image', 'marker'].includes(String(record.scope))) {
+     :                                                                                    ^^^^^^^^^^^^
+ 252 |     throw new Error(`Field "${token}" scope must be global, image, or marker.`)
+     `----
+  help: Consider picking a property (e.g. `user.name`), using a formatter (or `JSON.stringify`), or implementing a custom `toString()`/`toLocaleString()` on the type.
+
+Found 0 warnings and 7 errors.
+Finished in 3.4s on 7 files with 90 rules using 16 threads.

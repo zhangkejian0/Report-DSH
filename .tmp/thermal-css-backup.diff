@@ -1,0 +1,12 @@
+diff --git a/packages/client/ui-sidebar-documentpreview/src/client/thermal/ThermalAnalysisTab.module.css b/packages/client/ui-sidebar-documentpreview/src/client/thermal/ThermalAnalysisTab.module.css
+index 9a2a7d1296..14c193f04c 100644
+--- a/packages/client/ui-sidebar-documentpreview/src/client/thermal/ThermalAnalysisTab.module.css
++++ b/packages/client/ui-sidebar-documentpreview/src/client/thermal/ThermalAnalysisTab.module.css
+@@ -121,6 +121,7 @@
+ 
+ .field {
+   position: relative;
++  width: fit-content;
+   max-width: 100%;
+   line-height: 0;
+   user-select: none;
