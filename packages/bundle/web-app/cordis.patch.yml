@@ -289,6 +289,18 @@
       config:
         analyzerPath: D:/agworkspace/docgc/deepseek-harness/fotric_sdk/AnalyzeImage/ThermalAnalyzeJson.exe
 
+    # The Fotric IRtek SDK as one stdio MCP server: every Session's
+    # conversations get thermal_analyze / thermal_render / thermal_mark /
+    # thermal_edit as mcp__fotric__* tools.
+    - id: mcp-fotric
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: fotric
+        transport: stdio
+        command: node
+        args: ['D:/agworkspace/docgc/deepseek-harness/fotric_sdk/mcp/thermal-mcp.mjs']
+        toolCallTimeoutMs: 120000
+
     # Deterministic Word report generation over templates and thermal analyses;
     # the report wizard's fast mode calls it instead of dispatching an agent.
     - id: report-generate
